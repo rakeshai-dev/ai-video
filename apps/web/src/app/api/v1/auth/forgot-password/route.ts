@@ -46,8 +46,7 @@ export async function POST(request: NextRequest) {
       status: "dispatched",
       message: "Recovery token dispatched to your inbox (expires in 15 minutes).",
       expiresAt,
-      // Local dev preview token so password reset can be verified end-to-end without SMTP
-      devResetToken: rawResetToken,
+      ...(process.env.NODE_ENV !== "production" ? { devResetToken: rawResetToken } : {}),
     });
   } catch (error) {
     return NextResponse.json(

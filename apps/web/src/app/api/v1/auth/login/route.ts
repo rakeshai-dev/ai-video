@@ -13,6 +13,7 @@ import {
 const loginSchema = z.object({
   email: z.string().trim().toLowerCase().email("Please enter a valid work email address."),
   password: z.string().min(1, "Please enter your studio password."),
+  rememberSession: z.boolean().optional().default(true),
 });
 
 export async function POST(request: NextRequest) {
@@ -54,7 +55,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { email, password } = parsed.data;
+    const { email, password, rememberSession } = parsed.data;
     const db = getDb();
     const user = db
       .prepare(
@@ -162,7 +163,12 @@ export async function POST(request: NextRequest) {
 
     const ua = request.headers.get("user-agent") || "Web Browser";
     const ip = request.headers.get("x-forwarded-for") || "127.0.0.1";
-    const { rawToken, expiresAt } = createSession(user.id, ua.slice(0, 64), ip);
+    const { rawToken, expiresAt } = createSession(
+      user.id,
+      ua.slice(0, 64),
+      ip,
+      rememberSession ? 14 : 1
+    );
     await setSessionCookie(rawToken, expiresAt);
 
     return NextResponse.json({

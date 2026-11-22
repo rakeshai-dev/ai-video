@@ -65,14 +65,15 @@ export function validatePasswordStrength(password: string) {
 export function createSession(
   userId: string,
   deviceLabel = "Web Browser",
-  ipAddress = "127.0.0.1"
+  ipAddress = "127.0.0.1",
+  ttlDays = SESSION_TTL_DAYS
 ): { rawToken: string; expiresAt: string } {
   const db = getDb();
   const rawToken = generateToken(32);
   const tokenHash = sha256(rawToken);
   const id = `ses_${crypto.randomBytes(10).toString("hex")}`;
   const now = new Date();
-  const expiresAt = new Date(now.getTime() + SESSION_TTL_DAYS * 24 * 60 * 60 * 1000).toISOString();
+  const expiresAt = new Date(now.getTime() + ttlDays * 24 * 60 * 60 * 1000).toISOString();
 
   db.prepare(
     `INSERT INTO sessions (id, user_id, token_hash, device_label, ip_address, expires_at, created_at)

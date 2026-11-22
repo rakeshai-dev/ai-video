@@ -44,7 +44,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({
         status: "resent",
         otpExpiresAt: expiresAt,
-        devOtpPreview: newOtp,
+        ...(process.env.NODE_ENV !== "production" ? { devOtpPreview: newOtp } : {}),
       });
     }
 
@@ -59,7 +59,7 @@ export async function POST(request: NextRequest) {
     const { email, code } = parsed.data;
     const user = db
       .prepare(
-        `SELECT id, email, full_name, otp_code, otp_expires_at, credits_balance
+        `SELECT id, email, full_name, email_verified, otp_code, otp_expires_at, credits_balance
          FROM users WHERE email = ?`
       )
       .get(email) as
@@ -67,6 +67,7 @@ export async function POST(request: NextRequest) {
           id: string;
           email: string;
           full_name: string;
+          email_verified: number;
           otp_code: string | null;
           otp_expires_at: string | null;
           credits_balance: number;
@@ -75,6 +76,13 @@ export async function POST(request: NextRequest) {
 
     if (!user) {
       return NextResponse.json({ error: "No pending account found for this email." }, { status: 404 });
+    }
+
+    if (user.email_verified) {
+      return NextResponse.json(
+        { error: "This email is already verified. Please sign in." },
+        { status: 400 }
+      );
     }
 
     if (!user.otp_code || user.otp_code !== code) {

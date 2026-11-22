@@ -123,8 +123,7 @@ export async function POST(request: NextRequest) {
         workspaceSlug,
         creditsGranted: 15,
         otpExpiresAt,
-        // Returned in local dev sandbox so the user can test OTP verification without an external SMTP server
-        devOtpPreview: otpCode,
+        ...(process.env.NODE_ENV !== "production" ? { devOtpPreview: otpCode } : {}),
       },
       { status: 201 }
     );
