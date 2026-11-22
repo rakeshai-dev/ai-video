@@ -23,7 +23,7 @@
 | :--- | :--- | :--- | :--- | :--- |
 | **F-01** | **App Scaffold, Design System & Shared Layout Shell** | Clean Next.js 15 + Tailwind CSS scaffold (`apps/web`), Obsidian Cinema & Electric Vermilion design tokens, Google Fonts (`Space Grotesk`, `Plus Jakarta Sans`, `JetBrains Mono`, `Material Symbols Outlined`), and SQLite WAL database foundation (7 tables). | Design System `assets/1898333097011707571` | ✅ Completed |
 | **F-02** | **Public Marketing Homepage** | Fully responsive public homepage (Mobile, Tablet, Laptop, Desktop) matching Stitch `01A` & `01B` with interactive 9:16 solar flowchart preview, 5 animation engines showcase, pricing & CTAs. | `01A`, `01B` | ✅ Completed |
-| **F-03** | **Real Multi-Tenant Auth, Password Reset & Email OTP** | Real salted password hashing, JWT/HttpOnly cookie sessions, `user_id` tenant isolation, `+15 Free Starter Credits` ledger grant on signup, plus all error states (`401` wrong credentials, `409` duplicate email, `429` rate limit, password strength, forgot/reset password, 6-digit email OTP). | `02A/B`, `03A/B`, `13A/B` | ⏳ Pending |
+| **F-03** | **Real Multi-Tenant Auth, Password Reset & Email OTP** | Real salted password hashing, HttpOnly DB sessions, `user_id` tenant isolation, `+15 Free Starter Credits` ledger grant on signup, plus all error states (`401` wrong credentials, `409` duplicate email, `429` rate limit, password strength, forgot/reset password, 6-digit email OTP). | `02A/B`, `03A/B`, `13A/B` | ✅ Completed |
 | **F-04** | **Personal Member Dashboard & Empty Onboarding State** | Protected `/dashboard` route with responsive sidebar/mobile drawer + bottom nav, 4 telemetry cards, 5 Quick-Start Engine Launchers, filterable Projects Grid, and First-Time `0 Projects` Empty Onboarding state. | `04A/B`, `14A/B` | ⏳ Pending |
 | **F-05** | **Step 1: AI Brainstorm & Create Video Wizard** | Real `/api/v1/ai/brainstorm` & `/api/v1/projects` creation flow: 5 AI concept cards, `30s/60s/90s`, `9:16`/`16:9`, 5 animation presets, Dual Voiceover toggle (`Edge Neural TTS` vs `ElevenLabs Pro`), and 2×2 voice audition. | `05A/B` | ⏳ Pending |
 | **F-06** | **Steps 2 & 3: Interactive 60fps Storyboard & Animation Studio** | 3-column responsive studio (4-tab switcher on mobile/tablet), live 60fps HTML5 `<canvas>` programmatic renderer for all 5 engines, live scene script/node/subtitle editing, and multi-track timeline synced to DB. | `06A/B` | ⏳ Pending |
@@ -37,6 +37,20 @@
 ---
 
 ## 3. Feature Implementation Log (Proof of Work)
+
+### 2026-11-22 — Feature `F-03` Completed & Verified (Real Multi-Tenant Auth, Password Reset & Email OTP — `dev` branch)
+- **Files Created:**
+  - `apps/web/src/lib/auth.ts` (`crypto.scryptSync` per-user salted password hashing, `timingSafeEqual` verification, 6-digit OTP generator, 14-day HttpOnly DB sessions, brute-force lockout after 5 attempts, and 3 idempotent demo creator tenants)
+  - `apps/web/src/app/api/v1/auth/signup/route.ts` (Zod validation, 4-rule password strength check, `409 Conflict` duplicate email handling, `+15 Free Starter Credits` ledger entry, brand kit initialization, 6-digit OTP generation)
+  - `apps/web/src/app/api/v1/auth/verify-otp/route.ts` (6-digit OTP verification + resend flow + HttpOnly session cookie creation)
+  - `apps/web/src/app/api/v1/auth/login/route.ts` (Credential auth, `401` remaining-attempts counter, `429` 15-min brute-force lockout, `403` unverified email gate, and instant Demo Tenant Switcher)
+  - `apps/web/src/app/api/v1/auth/forgot-password/route.ts` & `reset-password/route.ts` (15-min SHA-256 recovery token dispatch, password rotation, lockout reset, and old session revocation)
+  - `apps/web/src/app/api/v1/auth/me/route.ts` & `logout/route.ts`
+  - `apps/web/src/app/login/page.tsx`, `signup/page.tsx`, `forgot-password/page.tsx`, `dashboard/page.tsx`, and `components/LogoutButton.tsx`
+- **Verification Proof:**
+  - `npm --prefix apps/web run typecheck` (`tsc --noEmit`): **0 errors**.
+  - `npm --prefix apps/web run build` (`next build`): **Compiled & built cleanly** (17/17 routes including all 7 `/api/v1/auth/*` endpoints, `/login`, `/signup`, `/forgot-password`, and protected `/dashboard`).
+- **Next Active Task:** `F-04` — Personal Member Dashboard & First-Time Empty Onboarding State (`04A/B`, `14A/B`).
 
 ### 2026-11-22 — Feature `F-02` Completed & Verified (Public Marketing Homepage — `dev` branch)
 - **Branch:** Created and switched to `dev` (`origin/dev`).
