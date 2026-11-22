@@ -22,7 +22,7 @@
 | Feature ID | Feature Name | Scope (UI + Backend + Edge Cases) | Stitch Screens | Status |
 | :--- | :--- | :--- | :--- | :--- |
 | **F-01** | **App Scaffold, Design System & Shared Layout Shell** | Clean Next.js 15 + Tailwind CSS scaffold (`apps/web`), Obsidian Cinema & Electric Vermilion design tokens, Google Fonts (`Space Grotesk`, `Plus Jakarta Sans`, `JetBrains Mono`, `Material Symbols Outlined`), and SQLite WAL database foundation (7 tables). | Design System `assets/1898333097011707571` | ✅ Completed |
-| **F-02** | **Public Marketing Homepage** | Fully responsive public homepage (Mobile, Tablet, Laptop, Desktop) matching Stitch `01A` & `01B` with interactive 9:16 solar flowchart preview, 5 animation engines showcase, pricing & CTAs. | `01A`, `01B` | ⏳ Pending |
+| **F-02** | **Public Marketing Homepage** | Fully responsive public homepage (Mobile, Tablet, Laptop, Desktop) matching Stitch `01A` & `01B` with interactive 9:16 solar flowchart preview, 5 animation engines showcase, pricing & CTAs. | `01A`, `01B` | ✅ Completed |
 | **F-03** | **Real Multi-Tenant Auth, Password Reset & Email OTP** | Real salted password hashing, JWT/HttpOnly cookie sessions, `user_id` tenant isolation, `+15 Free Starter Credits` ledger grant on signup, plus all error states (`401` wrong credentials, `409` duplicate email, `429` rate limit, password strength, forgot/reset password, 6-digit email OTP). | `02A/B`, `03A/B`, `13A/B` | ⏳ Pending |
 | **F-04** | **Personal Member Dashboard & Empty Onboarding State** | Protected `/dashboard` route with responsive sidebar/mobile drawer + bottom nav, 4 telemetry cards, 5 Quick-Start Engine Launchers, filterable Projects Grid, and First-Time `0 Projects` Empty Onboarding state. | `04A/B`, `14A/B` | ⏳ Pending |
 | **F-05** | **Step 1: AI Brainstorm & Create Video Wizard** | Real `/api/v1/ai/brainstorm` & `/api/v1/projects` creation flow: 5 AI concept cards, `30s/60s/90s`, `9:16`/`16:9`, 5 animation presets, Dual Voiceover toggle (`Edge Neural TTS` vs `ElevenLabs Pro`), and 2×2 voice audition. | `05A/B` | ⏳ Pending |
@@ -37,6 +37,18 @@
 ---
 
 ## 3. Feature Implementation Log (Proof of Work)
+
+### 2026-11-22 — Feature `F-02` Completed & Verified (Public Marketing Homepage — `dev` branch)
+- **Branch:** Created and switched to `dev` (`origin/dev`).
+- **Files Created / Updated:**
+  - `apps/web/src/components/HeroStudioPreview.tsx` (Interactive 3-pane 9:16 Solar Photovoltaic Studio preview with live scene switching & progress scrubber)
+  - `apps/web/src/app/page.tsx` (Full responsive Public Marketing Homepage matching Stitch `01A` Desktop + `01B` Mobile: sticky navbar + mobile hamburger drawer, Hero, 4-step workflow, 5 Modular Animation Engines bento grid, Dual Voiceover & Captions, Per-Member Instagram Scheduler preview, 3-tier Pricing, Final CTA, Footer, and live 1080p MP4 Demo Modal)
+  - `apps/web/src/app/api/v1/video-file/route.ts` (HTTP byte-range streaming endpoint for `solar-explainer-video.mp4` and `prototype-video.mp4`)
+  - `.gitignore` (Ignored local SQLite database files in `apps/web/data/`)
+- **Verification Proof:**
+  - `npm --prefix apps/web run typecheck` (`tsc --noEmit`): **0 errors**.
+  - `npm --prefix apps/web run build` (`next build`): **Compiled & built cleanly** (`/`, `/api/v1/health`, `/api/v1/video-file`).
+- **Next Active Task:** `F-03` — Real Multi-Tenant Auth, Password Reset & Email OTP Verification (`02A/B`, `03A/B`, `13A/B`).
 
 ### 2026-11-22 — Feature `F-01` Completed & Verified (App Scaffold, Design Tokens & SQLite DB)
 - **Files Created:**
