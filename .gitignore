@@ -13,6 +13,7 @@ node_modules/
 dist/
 out/
 *.log
+*.tsbuildinfo
 
 # Rendered Videos & Local SQLite Databases
 *.mp4

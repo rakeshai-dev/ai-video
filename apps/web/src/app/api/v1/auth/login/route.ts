@@ -21,8 +21,16 @@ export async function POST(request: NextRequest) {
     ensureDemoTenantsSeeded();
     const body = await request.json();
 
-    // Instant Demo Tenant Switcher (strictly limited to seeded demo accounts)
+    // Instant Demo Tenant Switcher (strictly disabled in production unless explicitly enabled)
+    const demoSwitcherAllowed =
+      process.env.NODE_ENV !== "production" || process.env.ENABLE_DEMO_SWITCHER === "true";
     if (body?.demoEmail && typeof body.demoEmail === "string") {
+      if (!demoSwitcherAllowed) {
+        return NextResponse.json(
+          { error: "Demo tenant switcher is disabled in production." },
+          { status: 403 }
+        );
+      }
       const db = getDb();
       const demo = db
         .prepare(

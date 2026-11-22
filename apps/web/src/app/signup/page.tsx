@@ -107,6 +107,26 @@ function SignupContent() {
     }
   };
 
+  const handleOtpKeyDown = (index: number, e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Backspace" && !otpDigits[index] && index > 0) {
+      const prevEl = document.getElementById(`otp-box-${index - 1}`);
+      prevEl?.focus();
+    }
+  };
+
+  const handleOtpPaste = (e: React.ClipboardEvent<HTMLInputElement>) => {
+    const pasted = e.clipboardData.getData("text").replace(/\D/g, "").slice(0, 6);
+    if (!pasted) return;
+    e.preventDefault();
+    const next = ["", "", "", "", "", ""];
+    for (let i = 0; i < pasted.length; i++) {
+      next[i] = pasted[i];
+    }
+    setOtpDigits(next);
+    const focusIdx = Math.min(pasted.length, 5);
+    document.getElementById(`otp-box-${focusIdx}`)?.focus();
+  };
+
   const handleVerifyOtp = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorBanner(null);
@@ -525,6 +545,8 @@ function SignupContent() {
                       maxLength={1}
                       value={digit}
                       onChange={(e) => handleOtpChange(idx, e.target.value)}
+                      onKeyDown={(e) => handleOtpKeyDown(idx, e)}
+                      onPaste={handleOtpPaste}
                       className="h-14 text-center font-mono text-xl font-bold text-white bg-[#09090B] border border-[#27272A] focus:border-[#FF4F28] focus:ring-1 focus:ring-[#FF4F28] rounded-lg focus:outline-none"
                     />
                   ))}

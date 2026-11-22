@@ -7,6 +7,21 @@ const VIDEO_MAP: Record<string, string> = {
   prototype: "prototype-video.mp4",
 };
 
+function toWebStream(nodeStream: fs.ReadStream): ReadableStream<Uint8Array> {
+  return new ReadableStream({
+    start(controller) {
+      nodeStream.on("data", (chunk) => {
+        controller.enqueue(typeof chunk === "string" ? Buffer.from(chunk) : new Uint8Array(chunk));
+      });
+      nodeStream.on("end", () => controller.close());
+      nodeStream.on("error", (err) => controller.error(err));
+    },
+    cancel() {
+      nodeStream.destroy();
+    },
+  });
+}
+
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const key = searchParams.get("name") || "solar";
@@ -28,24 +43,29 @@ export async function GET(request: NextRequest) {
   const range = request.headers.get("range");
 
   if (range) {
-    const parts = range.replace(/bytes=/, "").split("-");
-    const start = parseInt(parts[0], 10);
-    const end = parts[1] ? parseInt(parts[1], 10) : Math.min(start + 1024 * 1024 - 1, fileSize - 1);
+    const match = /^bytes=(\d+)-(\d*)$/.exec(range.trim());
+    if (!match) {
+      return new NextResponse(null, {
+        status: 416,
+        headers: { "Content-Range": `bytes */${fileSize}` },
+      });
+    }
+
+    const start = Number.parseInt(match[1], 10);
+    const requestedEnd = match[2] ? Number.parseInt(match[2], 10) : Math.min(start + 1024 * 1024 - 1, fileSize - 1);
+    const end = Math.min(requestedEnd, fileSize - 1);
+
+    if (Number.isNaN(start) || Number.isNaN(end) || start < 0 || start >= fileSize || start > end) {
+      return new NextResponse(null, {
+        status: 416,
+        headers: { "Content-Range": `bytes */${fileSize}` },
+      });
+    }
+
     const chunkSize = end - start + 1;
-
     const stream = fs.createReadStream(filePath, { start, end });
-    const webStream = new ReadableStream({
-      start(controller) {
-        stream.on("data", (chunk) => controller.enqueue(chunk));
-        stream.on("end", () => controller.close());
-        stream.on("error", (err) => controller.error(err));
-      },
-      cancel() {
-        stream.destroy();
-      },
-    });
 
-    return new NextResponse(webStream, {
+    return new NextResponse(toWebStream(stream), {
       status: 206,
       headers: {
         "Content-Range": `bytes ${start}-${end}/${fileSize}`,
@@ -56,8 +76,8 @@ export async function GET(request: NextRequest) {
     });
   }
 
-  const fileBuffer = fs.readFileSync(filePath);
-  return new NextResponse(fileBuffer, {
+  const fullStream = fs.createReadStream(filePath);
+  return new NextResponse(toWebStream(fullStream), {
     status: 200,
     headers: {
       "Content-Type": "video/mp4",
