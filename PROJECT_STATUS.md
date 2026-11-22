@@ -24,7 +24,7 @@
 | **F-01** | **App Scaffold, Design System & Shared Layout Shell** | Clean Next.js 15 + Tailwind CSS scaffold (`apps/web`), Obsidian Cinema & Electric Vermilion design tokens, Google Fonts (`Space Grotesk`, `Plus Jakarta Sans`, `JetBrains Mono`, `Material Symbols Outlined`), and SQLite WAL database foundation (7 tables). | Design System `assets/1898333097011707571` | ✅ Completed |
 | **F-02** | **Public Marketing Homepage** | Fully responsive public homepage (Mobile, Tablet, Laptop, Desktop) matching Stitch `01A` & `01B` with interactive 9:16 solar flowchart preview, 5 animation engines showcase, pricing & CTAs. | `01A`, `01B` | ✅ Completed |
 | **F-03** | **Real Multi-Tenant Auth, Password Reset & Email OTP** | Real salted password hashing, HttpOnly DB sessions, `user_id` tenant isolation, `+15 Free Starter Credits` ledger grant on signup, plus all error states (`401` wrong credentials, `409` duplicate email, `429` rate limit, password strength, forgot/reset password, 6-digit email OTP). | `02A/B`, `03A/B`, `13A/B` | ✅ Completed |
-| **F-04** | **Personal Member Dashboard & Empty Onboarding State** | Protected `/dashboard` route with responsive sidebar/mobile drawer + bottom nav, 4 telemetry cards, 5 Quick-Start Engine Launchers, filterable Projects Grid, and First-Time `0 Projects` Empty Onboarding state. | `04A/B`, `14A/B` | ⏳ Pending |
+| **F-04** | **Personal Member Dashboard & Empty Onboarding State** | Protected `/dashboard` route with responsive sidebar/mobile drawer + bottom nav, 4 telemetry cards, 5 Quick-Start Engine Launchers, filterable Projects Grid, and First-Time `0 Projects` Empty Onboarding state. | `04A/B`, `14A/B` | ✅ Completed |
 | **F-05** | **Step 1: AI Brainstorm & Create Video Wizard** | Real `/api/v1/ai/brainstorm` & `/api/v1/projects` creation flow: 5 AI concept cards, `30s/60s/90s`, `9:16`/`16:9`, 5 animation presets, Dual Voiceover toggle (`Edge Neural TTS` vs `ElevenLabs Pro`), and 2×2 voice audition. | `05A/B` | ⏳ Pending |
 | **F-06** | **Steps 2 & 3: Interactive 60fps Storyboard & Animation Studio** | 3-column responsive studio (4-tab switcher on mobile/tablet), live 60fps HTML5 `<canvas>` programmatic renderer for all 5 engines, live scene script/node/subtitle editing, and multi-track timeline synced to DB. | `06A/B` | ⏳ Pending |
 | **F-07** | **Step 4: On-Demand 1080p MP4 Render Pipeline & Failure Auto-Refund** | Real `/api/v1/projects/:id/render` endpoint invoking `packages/video-engine` + Edge Neural TTS + FFmpeg H.264, credit deduction, `0-Credits` non-destructive modal, and automatic credit refund on render failure. | `07A/B`, `14A/B` | ⏳ Pending |
@@ -37,6 +37,17 @@
 ---
 
 ## 3. Feature Implementation Log (Proof of Work)
+
+### 2026-11-22 — Feature `F-04` Completed & Verified (Personal Member Dashboard & First-Time Empty Onboarding — `dev` branch)
+- **Code Review Hardening Applied (`ba47b0a`):** Added `apps/web/.env.example`, gated demo switcher in production, hardened HTTP `Range` video streaming (`416` validation + full stream), added OTP Backspace & 6-digit Paste support, and ignored `*.tsbuildinfo`.
+- **Files Created / Updated:**
+  - `apps/web/src/lib/projects.ts` (Tenant-isolated SQLite project queries, dashboard telemetry aggregation, and demo-only sample project seeding so brand-new users start with 0 projects)
+  - `apps/web/src/app/api/v1/projects/route.ts` (Authenticated `GET` & tenant-scoped `DELETE` endpoints)
+  - `apps/web/src/components/DashboardShell.tsx` (Responsive Obsidian Cinema shell: fixed `w-64` desktop sidebar, mobile/tablet slide-over drawer, top telemetry header, and fixed 5-tab mobile bottom nav bar)
+  - `apps/web/src/components/DashboardClient.tsx` & `apps/web/src/app/dashboard/page.tsx` (4 Telemetry Cards, 5 Quick-Start Animation Engine Launchers, filterable Recent Video Projects Grid, and First-Time `0 Projects` Empty Onboarding checklist matching Stitch `04A/B` & `14A/B`)
+- **Verification Proof:**
+  - `npm --prefix apps/web run typecheck` (`tsc --noEmit`): **0 errors**.
+- **Next Active Task:** `F-05` — Step 1: AI Brainstorm & Create Video Wizard (`05A/B`).
 
 ### 2026-11-22 — Feature `F-03` Completed & Verified (Real Multi-Tenant Auth, Password Reset & Email OTP — `dev` branch)
 - **Files Created:**
