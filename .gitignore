@@ -1,0 +1,18 @@
+# Secrets & Environment Variables
+.env
+.env.*
+!.env.example
+
+# Local Agent & MCP Configs containing API keys
+.agents/
+mcp_config.json
+
+# Dependencies & Build Outputs
+node_modules/
+.next/
+dist/
+out/
+*.log
+
+# Rendered Videos
+*.mp4

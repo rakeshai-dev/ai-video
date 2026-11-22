@@ -1,0 +1,50 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --bg-canvas: #09090b;
+  --bg-surface: #121216;
+  --bg-elevated: #18181d;
+  --border-hairline: #27272a;
+  --accent-vermilion: #ff4f28;
+  --accent-amber: #f59e0b;
+  --accent-jade: #10b981;
+  --accent-crimson: #ef4444;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  background-color: var(--bg-canvas);
+  color: #f4f4f5;
+  overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
+}
+
+.material-symbols-outlined {
+  font-variation-settings: "FILL" 0, "wght" 500, "GRAD" 0, "opsz" 24;
+  user-select: none;
+}
+
+/* Subtle studio scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: #09090b;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #27272a;
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #3f3f46;
+}
