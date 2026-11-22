@@ -243,22 +243,27 @@ export function listUserProjects(userId: string): VideoProjectSummary[] {
 export function getDashboardTelemetry(userId: string) {
   const projects = listUserProjects(userId);
   const db = getDb();
-  const scheduledRow = db
+  const scheduledRows = db
     .prepare(
-      `SELECT COUNT(*) as cnt FROM scheduled_posts WHERE user_id = ? AND status = 'scheduled'`
+      `SELECT DISTINCT project_id FROM scheduled_posts WHERE user_id = ? AND status = 'scheduled'`
     )
-    .get(userId) as { cnt: number };
+    .all(userId) as Array<{ project_id: string }>;
+
+  const scheduledProjectIds = new Set<string>(scheduledRows.map((r) => r.project_id));
+  for (const p of projects) {
+    if (p.status === "scheduled") {
+      scheduledProjectIds.add(p.id);
+    }
+  }
 
   const renderedCount = projects.filter(
     (p) => p.status === "rendered" || p.status === "published" || p.status === "scheduled"
   ).length;
-  const queuedCount =
-    scheduledRow.cnt + projects.filter((p) => p.status === "scheduled").length;
 
   return {
     totalProjects: projects.length,
     renderedExports: renderedCount,
-    scheduledReels: queuedCount,
+    scheduledReels: scheduledProjectIds.size,
     projects,
   };
 }

@@ -63,8 +63,12 @@ const QUICK_LAUNCHERS = [
 export default function DashboardClient({ user, initialTelemetry }: DashboardClientProps) {
   const router = useRouter();
   const [projects, setProjects] = useState<VideoProjectSummary[]>(initialTelemetry.projects);
+  const [scheduledReelsCount, setScheduledReelsCount] = useState<number>(
+    initialTelemetry.scheduledReels
+  );
   const [filterStatus, setFilterStatus] = useState<"all" | "rendered" | "scheduled" | "draft">("all");
   const [searchQuery, setSearchQuery] = useState("");
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
   const filteredProjects = projects.filter((p) => {
@@ -79,14 +83,18 @@ export default function DashboardClient({ user, initialTelemetry }: DashboardCli
     return matchesStatus && matchesSearch;
   });
 
-  const handleDeleteProject = async (id: string) => {
-    setDeletingId(id);
+  const handleDeleteProject = async (project: VideoProjectSummary) => {
+    setDeletingId(project.id);
     try {
-      const res = await fetch(`/api/v1/projects?id=${encodeURIComponent(id)}`, {
+      const res = await fetch(`/api/v1/projects?id=${encodeURIComponent(project.id)}`, {
         method: "DELETE",
       });
       if (res.ok) {
-        setProjects((prev) => prev.filter((p) => p.id !== id));
+        setProjects((prev) => prev.filter((p) => p.id !== project.id));
+        if (project.status === "scheduled") {
+          setScheduledReelsCount((c) => Math.max(0, c - 1));
+        }
+        setConfirmDeleteId(null);
       }
     } finally {
       setDeletingId(null);
@@ -147,7 +155,7 @@ export default function DashboardClient({ user, initialTelemetry }: DashboardCli
               </span>
             </div>
             <div className="font-display font-bold text-2xl sm:text-3xl text-white">
-              {initialTelemetry.scheduledReels}{" "}
+              {scheduledReelsCount}{" "}
               <span className="text-base font-semibold">Queued</span>
             </div>
             <div className="text-[11px] font-mono text-[#F59E0B]">
@@ -343,7 +351,30 @@ export default function DashboardClient({ user, initialTelemetry }: DashboardCli
             </div>
 
             {/* 3-Column Recent Video Projects Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
+            {filteredProjects.length === 0 ? (
+              <div className="bg-[#121216] border border-dashed border-[#27272A] rounded-xl p-8 text-center space-y-3">
+                <span className="material-symbols-outlined text-3xl text-[#71717A]">
+                  search_off
+                </span>
+                <div className="font-display font-bold text-sm text-white">
+                  No projects match your current filter
+                </div>
+                <p className="text-xs text-[#A1A1AA]">
+                  Try clearing your search query or switching back to &ldquo;All&rdquo;.
+                </p>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setFilterStatus("all");
+                    setSearchQuery("");
+                  }}
+                  className="px-3.5 py-1.5 rounded-md bg-[#18181D] hover:bg-[#27272A] border border-[#27272A] text-xs font-mono text-[#FF4F28]"
+                >
+                  Clear Filters
+                </button>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
               {filteredProjects.map((project) => (
                 <article
                   key={project.id}
@@ -403,15 +434,34 @@ export default function DashboardClient({ user, initialTelemetry }: DashboardCli
                         <h3 className="font-display font-bold text-sm text-white line-clamp-2 leading-snug">
                           {project.title}
                         </h3>
-                        <button
-                          type="button"
-                          disabled={deletingId === project.id}
-                          onClick={() => handleDeleteProject(project.id)}
-                          title="Delete project"
-                          className="text-[#71717A] hover:text-[#EF4444] transition-colors flex-shrink-0"
-                        >
-                          <span className="material-symbols-outlined text-base">delete</span>
-                        </button>
+                        {confirmDeleteId === project.id ? (
+                          <div className="flex items-center gap-1 flex-shrink-0">
+                            <button
+                              type="button"
+                              disabled={deletingId === project.id}
+                              onClick={() => handleDeleteProject(project)}
+                              className="px-2 py-0.5 rounded bg-[#EF4444] text-white font-mono text-[10px] font-bold"
+                            >
+                              {deletingId === project.id ? "..." : "Delete"}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setConfirmDeleteId(null)}
+                              className="px-1.5 py-0.5 rounded bg-[#18181D] border border-[#27272A] text-[#A1A1AA] font-mono text-[10px]"
+                            >
+                              Cancel
+                            </button>
+                          </div>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => setConfirmDeleteId(project.id)}
+                            title="Delete project"
+                            className="text-[#71717A] hover:text-[#EF4444] transition-colors flex-shrink-0"
+                          >
+                            <span className="material-symbols-outlined text-base">delete</span>
+                          </button>
+                        )}
                       </div>
                       <p className="text-[11px] font-mono text-[#71717A]">
                         {project.aspectRatio === "9:16" ? "9:16 Vertical" : "16:9 Landscape"} •{" "}
@@ -430,7 +480,7 @@ export default function DashboardClient({ user, initialTelemetry }: DashboardCli
                     </Link>
                     {project.mp4Path && (
                       <a
-                        href={`${project.mp4Path}&download=1`}
+                        href={`${project.mp4Path}${project.mp4Path.includes("?") ? "&" : "?"}download=1`}
                         className="px-3 py-1.5 rounded-md bg-[#18181D] hover:bg-[#27272A] border border-[#27272A] text-white font-display font-semibold text-xs inline-flex items-center gap-1"
                       >
                         <span className="material-symbols-outlined text-sm">download</span>
@@ -464,7 +514,8 @@ export default function DashboardClient({ user, initialTelemetry }: DashboardCli
                   </p>
                 </div>
               </Link>
-            </div>
+              </div>
+            )}
           </section>
         )}
       </div>
