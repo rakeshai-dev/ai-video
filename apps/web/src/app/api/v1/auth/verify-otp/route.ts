@@ -1,7 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { getDb } from "@/lib/db";
-import { createSession, generateOtpCode, setSessionCookie } from "@/lib/auth";
+import {
+  createSession,
+  generateOtpCode,
+  setSessionCookie,
+  timingSafeEqualStr,
+} from "@/lib/auth";
+
+const MAX_OTP_ATTEMPTS = 5;
 
 const verifySchema = z.object({
   email: z.string().trim().toLowerCase().email(),
@@ -32,14 +39,20 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ error: "Account not found." }, { status: 404 });
       }
 
+      if (user.email_verified) {
+        return NextResponse.json(
+          { error: "This email is already verified. Please sign in." },
+          { status: 400 }
+        );
+      }
+
       const newOtp = generateOtpCode();
       const expiresAt = new Date(Date.now() + 10 * 60 * 1000).toISOString();
-      db.prepare("UPDATE users SET otp_code = ?, otp_expires_at = ?, updated_at = ? WHERE id = ?").run(
-        newOtp,
-        expiresAt,
-        new Date().toISOString(),
-        user.id
-      );
+      db.prepare(
+        `UPDATE users
+         SET otp_code = ?, otp_expires_at = ?, otp_attempts = 0, updated_at = ?
+         WHERE id = ?`
+      ).run(newOtp, expiresAt, new Date().toISOString(), user.id);
 
       return NextResponse.json({
         status: "resent",
@@ -59,7 +72,7 @@ export async function POST(request: NextRequest) {
     const { email, code } = parsed.data;
     const user = db
       .prepare(
-        `SELECT id, email, full_name, email_verified, otp_code, otp_expires_at, credits_balance
+        `SELECT id, email, full_name, email_verified, otp_code, otp_expires_at, otp_attempts, credits_balance
          FROM users WHERE email = ?`
       )
       .get(email) as
@@ -70,6 +83,7 @@ export async function POST(request: NextRequest) {
           email_verified: number;
           otp_code: string | null;
           otp_expires_at: string | null;
+          otp_attempts: number;
           credits_balance: number;
         }
       | undefined;
@@ -85,25 +99,67 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if (!user.otp_code || user.otp_code !== code) {
+    if ((user.otp_attempts || 0) >= MAX_OTP_ATTEMPTS || !user.otp_code) {
       return NextResponse.json(
-        { error: "Invalid 6-digit verification code. Please check and try again." },
-        { status: 401 }
+        {
+          code: "OTP_LOCKED",
+          error:
+            "Too many failed verification attempts or no active code. Please request a new verification code.",
+        },
+        { status: 429 }
       );
     }
 
-    if (user.otp_expires_at && user.otp_expires_at < new Date().toISOString()) {
+    const nowIso = new Date().toISOString();
+    if (user.otp_expires_at && user.otp_expires_at < nowIso) {
       return NextResponse.json(
         { error: "This verification code has expired. Please request a new code." },
         { status: 410 }
       );
     }
 
+    if (!timingSafeEqualStr(user.otp_code, code)) {
+      const nextAttempts = (user.otp_attempts || 0) + 1;
+      const remaining = Math.max(0, MAX_OTP_ATTEMPTS - nextAttempts);
+
+      if (nextAttempts >= MAX_OTP_ATTEMPTS) {
+        db.prepare(
+          `UPDATE users
+           SET otp_code = NULL, otp_expires_at = NULL, otp_attempts = ?, updated_at = ?
+           WHERE id = ?`
+        ).run(nextAttempts, nowIso, user.id);
+
+        return NextResponse.json(
+          {
+            code: "OTP_LOCKED",
+            error:
+              "5 incorrect verification attempts reached. Code invalidated — please click Resend Verification Code.",
+            attemptsRemaining: 0,
+          },
+          { status: 429 }
+        );
+      }
+
+      db.prepare("UPDATE users SET otp_attempts = ?, updated_at = ? WHERE id = ?").run(
+        nextAttempts,
+        nowIso,
+        user.id
+      );
+
+      return NextResponse.json(
+        {
+          error: `Invalid 6-digit verification code — ${remaining} attempt${remaining === 1 ? "" : "s"} remaining.`,
+          attemptsRemaining: remaining,
+        },
+        { status: 401 }
+      );
+    }
+
     db.prepare(
       `UPDATE users
-       SET email_verified = 1, otp_code = NULL, otp_expires_at = NULL, updated_at = ?
+       SET email_verified = 1, otp_code = NULL, otp_expires_at = NULL, otp_attempts = 0, updated_at = ?
        WHERE id = ?`
-    ).run(new Date().toISOString(), user.id);
+    ).run(nowIso, user.id);
 
     const ua = request.headers.get("user-agent") || "Web Browser";
     const ip = request.headers.get("x-forwarded-for") || "127.0.0.1";

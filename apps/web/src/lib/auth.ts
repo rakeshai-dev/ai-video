@@ -39,8 +39,15 @@ export function sha256(input: string): string {
   return crypto.createHash("sha256").update(input).digest("hex");
 }
 
+export function timingSafeEqualStr(a: string, b: string): boolean {
+  const bufA = Buffer.from(a, "utf8");
+  const bufB = Buffer.from(b, "utf8");
+  if (bufA.length !== bufB.length) return false;
+  return crypto.timingSafeEqual(bufA, bufB);
+}
+
 export function generateOtpCode(): string {
-  return String(crypto.randomInt(100000, 999999));
+  return String(crypto.randomInt(100000, 1000000));
 }
 
 export function generateToken(bytes = 32): string {

@@ -86,34 +86,42 @@ export async function POST(request: NextRequest) {
     const workspaceSlug = `${baseSlug || "studio"}-${crypto.randomBytes(2).toString("hex")}`;
     const handleClean = instagramHandle || `@${workspaceSlug.replace(/-/g, "_")}`;
 
-    db.prepare(
-      `INSERT INTO users (
-        id, email, full_name, password_hash, password_salt,
-        email_verified, otp_code, otp_expires_at,
-        plan_tier, credits_balance, workspace_slug, timezone, niche, created_at, updated_at
-      ) VALUES (?, ?, ?, ?, ?, 0, ?, ?, 'starter_free', 15, ?, 'Asia/Kolkata', ?, ?, ?)`
-    ).run(
-      userId,
-      email,
-      fullName,
-      hash,
-      salt,
-      otpCode,
-      otpExpiresAt,
-      workspaceSlug,
-      niche,
-      nowIso,
-      nowIso
-    );
+    db.exec("BEGIN IMMEDIATE");
+    try {
+      db.prepare(
+        `INSERT INTO users (
+          id, email, full_name, password_hash, password_salt,
+          email_verified, otp_code, otp_expires_at, otp_attempts,
+          plan_tier, credits_balance, workspace_slug, timezone, niche, created_at, updated_at
+        ) VALUES (?, ?, ?, ?, ?, 0, ?, ?, 0, 'starter_free', 15, ?, 'Asia/Kolkata', ?, ?, ?)`
+      ).run(
+        userId,
+        email,
+        fullName,
+        hash,
+        salt,
+        otpCode,
+        otpExpiresAt,
+        workspaceSlug,
+        niche,
+        nowIso,
+        nowIso
+      );
 
-    db.prepare(
-      `INSERT INTO brand_kits (user_id, watermark_text, updated_at) VALUES (?, ?, ?)`
-    ).run(userId, handleClean, nowIso);
+      db.prepare(
+        `INSERT INTO brand_kits (user_id, watermark_text, updated_at) VALUES (?, ?, ?)`
+      ).run(userId, handleClean, nowIso);
 
-    db.prepare(
-      `INSERT INTO credit_ledger (id, user_id, delta, balance_after, reason, created_at)
-       VALUES (?, ?, 15, 15, 'Starter Account Allocation Grant (+15 Free Credits)', ?)`
-    ).run(`tx_${crypto.randomBytes(6).toString("hex")}`, userId, nowIso);
+      db.prepare(
+        `INSERT INTO credit_ledger (id, user_id, delta, balance_after, reason, created_at)
+         VALUES (?, ?, 15, 15, 'Starter Account Allocation Grant (+15 Free Credits)', ?)`
+      ).run(`tx_${crypto.randomBytes(6).toString("hex")}`, userId, nowIso);
+
+      db.exec("COMMIT");
+    } catch (txErr) {
+      db.exec("ROLLBACK");
+      throw txErr;
+    }
 
     return NextResponse.json(
       {

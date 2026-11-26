@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { getDb } from "@/lib/db";
-import { hashPassword, sha256, validatePasswordStrength } from "@/lib/auth";
+import { hashPassword, sha256, timingSafeEqualStr, validatePasswordStrength } from "@/lib/auth";
 
 const resetSchema = z.object({
   email: z.string().trim().toLowerCase().email(),
@@ -43,7 +43,7 @@ export async function POST(request: NextRequest) {
       | { id: string; reset_token: string | null; reset_expires_at: string | null }
       | undefined;
 
-    if (!user || !user.reset_token || user.reset_token !== tokenHash) {
+    if (!user || !user.reset_token || !timingSafeEqualStr(user.reset_token, tokenHash)) {
       return NextResponse.json(
         { error: "Invalid or already used recovery token." },
         { status: 401 }

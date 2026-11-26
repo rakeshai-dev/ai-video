@@ -38,6 +38,14 @@
 
 ## 3. Feature Implementation Log (Proof of Work)
 
+### 2026-11-26 — Post-Review Hardening (`F-01`–`F-04` Audit Fixes — `dev` branch)
+- **Fixes Applied & Verified:**
+  - Untracked runtime SQLite WAL files (`apps/web/data/animora.sqlite*`) from Git index so local sessions never dirty Git status.
+  - Added 5-attempt brute-force lockout (`429 OTP_LOCKED`) & timing-safe comparison to `/api/v1/auth/verify-otp`, blocked OTP resend for already-verified emails, and fixed inclusive 6-digit OTP range (`100000..999999`).
+  - Wrapped multi-table signup provisioning (`users`, `brand_kits`, `credit_ledger`) and demo project seeding in atomic `BEGIN IMMEDIATE` SQLite transactions.
+  - Unified `/api/v1/auth/forgot-password` response payload to prevent email enumeration and switched `/api/v1/auth/reset-password` to timing-safe token hash comparison.
+  - Standardized `scenes_json` in `apps/web/src/lib/projects.ts` on the canonical `SceneData` contract from `packages/video-engine/src/types/schema.ts`, added `users.demo_seeded` so deleting all demo projects persists across refreshes, and made the sidebar credit bar plan-tier aware (`15` / `100` / `350`).
+
 ### 2026-11-22 — Feature `F-04` Completed & Verified (Personal Member Dashboard & First-Time Empty Onboarding — `dev` branch)
 - **Code Review Hardening Applied (`ba47b0a`):** Added `apps/web/.env.example`, gated demo switcher in production, hardened HTTP `Range` video streaming (`416` validation + full stream), added OTP Backspace & 6-digit Paste support, and ignored `*.tsbuildinfo`.
 - **Files Created / Updated:**

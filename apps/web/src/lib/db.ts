@@ -39,6 +39,8 @@ export function getDb(): DatabaseSync {
       workspace_slug TEXT UNIQUE,
       timezone TEXT NOT NULL DEFAULT 'Asia/Kolkata',
       niche TEXT NOT NULL DEFAULT 'STEM & Science',
+      otp_attempts INTEGER NOT NULL DEFAULT 0,
+      demo_seeded INTEGER NOT NULL DEFAULT 0,
       created_at TEXT NOT NULL,
       updated_at TEXT NOT NULL
     );
@@ -129,6 +131,16 @@ export function getDb(): DatabaseSync {
       FOREIGN KEY (project_id) REFERENCES video_projects(id) ON DELETE CASCADE
     );
   `);
+
+  // Idempotent schema migrations for pre-existing local SQLite files
+  const userCols = db.prepare("PRAGMA table_info(users)").all() as Array<{ name: string }>;
+  const colNames = new Set(userCols.map((c) => c.name));
+  if (!colNames.has("otp_attempts")) {
+    db.exec("ALTER TABLE users ADD COLUMN otp_attempts INTEGER NOT NULL DEFAULT 0");
+  }
+  if (!colNames.has("demo_seeded")) {
+    db.exec("ALTER TABLE users ADD COLUMN demo_seeded INTEGER NOT NULL DEFAULT 0");
+  }
 
   dbInstance = db;
   return dbInstance;

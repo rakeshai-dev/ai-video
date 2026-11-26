@@ -45,7 +45,9 @@ export default function DashboardShell({
     router.refresh();
   };
 
-  const creditPercent = Math.min(100, Math.round((user.creditsBalance / 15) * 100));
+  const planMaxCredits =
+    user.planTier === "educator_studio" ? 350 : user.planTier === "creator_pro" ? 100 : 15;
+  const creditPercent = Math.min(100, Math.round((user.creditsBalance / planMaxCredits) * 100));
 
   const SidebarContent = (
     <div className="flex flex-col h-full justify-between bg-[#0C0C0F] border-r border-[#27272A]">

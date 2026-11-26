@@ -26,17 +26,20 @@ export async function POST(request: NextRequest) {
       | { id: string }
       | undefined;
 
+    const expiresAt = new Date(Date.now() + 15 * 60 * 1000).toISOString();
+    const genericMessage =
+      "If an account exists for this email, a 15-minute recovery token has been dispatched.";
+
     if (!user) {
-      // Return generic non-enumerating success message in production style, with dev flag
       return NextResponse.json({
         status: "dispatched",
-        message: "If an account exists for this email, a 15-minute recovery token has been sent.",
+        message: genericMessage,
+        expiresAt,
       });
     }
 
     const rawResetToken = generateToken(24);
     const tokenHash = sha256(rawResetToken);
-    const expiresAt = new Date(Date.now() + 15 * 60 * 1000).toISOString();
 
     db.prepare(
       `UPDATE users SET reset_token = ?, reset_expires_at = ?, updated_at = ? WHERE id = ?`
@@ -44,7 +47,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({
       status: "dispatched",
-      message: "Recovery token dispatched to your inbox (expires in 15 minutes).",
+      message: genericMessage,
       expiresAt,
       ...(process.env.NODE_ENV !== "production" ? { devResetToken: rawResetToken } : {}),
     });
