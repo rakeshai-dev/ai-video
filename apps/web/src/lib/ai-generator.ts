@@ -443,6 +443,14 @@ Generate 5 diverse, high-retention educational or kids-learning Reel concepts.`;
   };
 }
 
+export function truncateAtWord(text: string, maxLen: number): string {
+  const clean = text.trim();
+  if (clean.length <= maxLen) return clean;
+  const sliced = clean.slice(0, maxLen - 1);
+  const lastSpace = sliced.lastIndexOf(" ");
+  return `${(lastSpace > 20 ? sliced.slice(0, lastSpace) : sliced).trim()}…`;
+}
+
 function targetSceneCountForDuration(durationSec: 30 | 60 | 90): number {
   if (durationSec === 30) return 5;
   if (durationSec === 90) return 12;
@@ -595,7 +603,7 @@ function buildDeterministicStoryboard(params: {
       const sceneType: SceneType =
         idx === 0 && primaryTemplate !== "kids_counting" ? "illustrated_motion" : primaryTemplate;
       const firstWords = narration.split(/\s+/).slice(0, 6).join(" ").replace(/[.,!?]+$/, "");
-      const headline = idx === 0 ? title.slice(0, 56) : `${idx + 1}. ${firstWords}`;
+      const headline = idx === 0 ? truncateAtWord(title, 58) : `${idx + 1}. ${firstWords}`;
 
       return {
         scene_id: `sc_${String(idx + 1).padStart(2, "0")}`,
@@ -623,7 +631,7 @@ function buildDeterministicStoryboard(params: {
     template: SceneType;
   }> = [
     {
-      headline: title.slice(0, 58),
+      headline: truncateAtWord(title, 58),
       narration: openingHook,
       template: primaryTemplate === "kids_counting" ? "kids_counting" : "illustrated_motion",
     },
@@ -718,7 +726,7 @@ function buildDeterministicStoryboard(params: {
   });
 }
 
-function sanitizeAnimationProps(
+export function sanitizeAnimationProps(
   sceneType: SceneType,
   rawProps: unknown,
   headline: string,

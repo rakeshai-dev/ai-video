@@ -26,7 +26,7 @@
 | **F-03** | **Real Multi-Tenant Auth, Password Reset & Email OTP** | Real salted password hashing, HttpOnly DB sessions, `user_id` tenant isolation, `+15 Free Starter Credits` ledger grant on signup, plus all error states (`401` wrong credentials, `409` duplicate email, `429` rate limit, password strength, forgot/reset password, 6-digit email OTP). | `02A/B`, `03A/B`, `13A/B` | ✅ Completed |
 | **F-04** | **Personal Member Dashboard & Empty Onboarding State** | Protected `/dashboard` route with responsive sidebar/mobile drawer + bottom nav, 4 telemetry cards, 5 Quick-Start Engine Launchers, filterable Projects Grid, and First-Time `0 Projects` Empty Onboarding state. | `04A/B`, `14A/B` | ✅ Completed |
 | **F-05** | **Step 1: AI Brainstorm & Create Video Wizard** | Real `/api/v1/ai/brainstorm` & `/api/v1/projects` creation flow: 5 AI concept cards, `30s/60s/90s`, `9:16`/`16:9`, 5 animation presets, Dual Voiceover toggle (`Edge Neural TTS` vs `ElevenLabs Pro`), and 2×2 voice audition. | `05A/B` | ✅ Completed |
-| **F-06** | **Steps 2 & 3: Interactive 60fps Storyboard & Animation Studio** | 3-column responsive studio (4-tab switcher on mobile/tablet), live 60fps HTML5 `<canvas>` programmatic renderer for all 5 engines, live scene script/node/subtitle editing, and multi-track timeline synced to DB. | `06A/B` | ⏳ Pending |
+| **F-06** | **Steps 2 & 3: Interactive 60fps Storyboard & Animation Studio** | 3-column responsive studio (4-tab switcher on mobile/tablet), live 60fps HTML5 `<canvas>` programmatic renderer for all 5 engines, live scene script/node/subtitle editing, and multi-track timeline synced to DB. | `06A/B` | ✅ Completed |
 | **F-07** | **Step 4: On-Demand 1080p MP4 Render Pipeline & Failure Auto-Refund** | Real `/api/v1/projects/:id/render` endpoint invoking `packages/video-engine` + Edge Neural TTS + FFmpeg H.264, credit deduction, `0-Credits` non-destructive modal, and automatic credit refund on render failure. | `07A/B`, `14A/B` | ⏳ Pending |
 | **F-08** | **Per-Member Instagram Connect OAuth 2.0 & Sandbox Publisher** | Isolated per-member Instagram OAuth vault (`AES-256-GCM` encrypted tokens), 3-step eligibility check, Personal Account / Expired Token error handling, Sandbox Mock Mode, and direct Reel publish + AI caption writer. | `07A/B`, `09A/B`, `14A/B` | ⏳ Pending |
 | **F-09** | **Content Calendar & Automated Scheduled Reels Queue** | Full-screen 2×3 Scheduled Reels Grid + Active Queue Inspector drawer, schedule/reschedule/cancel/retry dispatch API, and background scheduler cron worker. | `08A/B` | ⏳ Pending |
@@ -37,6 +37,19 @@
 ---
 
 ## 3. Feature Implementation Log (Proof of Work)
+
+### 2026-11-26 — Feature `F-06` Completed & Verified (Steps 2 & 3: Interactive 60fps Storyboard & Animation Studio — `dev` branch)
+- **Files Created / Updated:**
+  - `apps/web/src/components/StudioCanvasPlayer.tsx` (High-DPI `1080×1920` / `1920×1080` 60fps HTML5 `<canvas>` `requestAnimationFrame` renderer supporting all 5 animation engines: `diagram_flow`, `kids_counting`, `split_comparison`, `stat_counter`, `illustrated_motion`; all 4 word-synced subtitle styles: `karaoke_highlight`, `hormozi_pop`, `kids_read_along`, `clean_minimal`; Reels/Shorts `96px` safe-zone guides; fullscreen; loop; and transport scrubbing)
+  - `apps/web/src/components/StoryboardStudioClient.tsx` (Responsive 3-column desktop workstation matching Stitch `06A` + 4-tab mobile/tablet switcher matching Stitch `06B`: drag-and-drop & arrow scene deck reordering, `+ Add Scene`, `Delete Scene`, 3-tab Scene Inspector for Script & Voice / Diagram Props / Captions & Audio, Web Speech API narration audition, and interactive 4-track timeline sequencer dock)
+  - `apps/web/src/app/api/v1/projects/[id]/route.ts` (Added `PATCH` endpoint for inline project title, `9:16` / `16:9` aspect ratio, `subtitleStyle`, `voiceId`, and `voiceSpeed` with proportional duration & word-timestamp rescaling)
+  - `apps/web/src/app/api/v1/projects/[id]/scenes/route.ts`, `scenes/[sceneId]/route.ts`, `scenes/reorder/route.ts`, and `generate-assets/route.ts` (Tenant-isolated scene creation up to 20 scenes, template/props/narration/duration editing with automatic `word_timestamps` sync, `>=1` scene deletion guard, `1..N` deck reordering, and full-project voice/timestamp calibration)
+  - `apps/web/src/app/dashboard/projects/[id]/studio/page.tsx` & `apps/web/src/app/dashboard/projects/[id]/publish/page.tsx` (Full Storyboard Studio route + Step 4 Render & Publish handoff route)
+  - `apps/web/src/lib/ai-generator.ts` (Exported `truncateAtWord` & `sanitizeAnimationProps` for shared server-side scene sanitization)
+- **Verification Proof:**
+  - `npm --prefix apps/web run typecheck` (`tsc --noEmit`): **0 errors**.
+  - Live `F-06` E2E API + SSR UI test suite (`8/8` scenarios on `http://localhost:3000`): **Passed** (`401` auth guards on all 6 `F-06` endpoints, `PATCH` project settings & `16:9` / `hormozi_pop` / `voiceSpeed` rescaling, `POST` add scene, `PUT` template & `animation_props` update, `POST` scene reorder `1..N`, `POST` `generate-assets` voice sync, cross-tenant `404` isolation, `DELETE` scene, and `200 OK` Studio + `/publish` SSR HTML & Tailwind CSS verification).
+- **Next Active Task:** `F-07` — Step 4: On-Demand 1080p MP4 Render Pipeline & Failure Auto-Refund (`07A/B`, `14A/B`).
 
 ### 2026-11-26 — Feature `F-05` Completed & Verified (Step 1: AI Brainstorm & Create Video Wizard — `dev` branch)
 - **Files Created / Updated:**
