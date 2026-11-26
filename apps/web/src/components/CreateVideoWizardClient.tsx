@@ -247,7 +247,7 @@ export default function CreateVideoWizardClient({
           variationSeed: nextSeed,
         }),
       });
-      const data = await res.json();
+      const data = await res.json().catch(() => ({}));
       if (!res.ok) {
         setErrorBanner(data.error || "Could not brainstorm ideas right now.");
         return;
@@ -305,7 +305,7 @@ export default function CreateVideoWizardClient({
         }),
       });
 
-      const data = await res.json();
+      const data = await res.json().catch(() => ({}));
       if (!res.ok) {
         setErrorBanner(data.error || "Failed to generate project storyboard.");
         setSubmittingAction(null);
@@ -1084,6 +1084,8 @@ export default function CreateVideoWizardClient({
                   <span>
                     {submittingAction === "storyboard"
                       ? "Generating Timed Storyboard..."
+                      : mode === "custom_script"
+                      ? "Generate Timed Storyboard from Script"
                       : `Generate Script & ${activeDurationMeta.scenesTarget}-Scene Storyboard`}
                   </span>
                   <span className="material-symbols-outlined text-base font-bold">

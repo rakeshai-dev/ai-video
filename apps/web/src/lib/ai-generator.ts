@@ -1,5 +1,4 @@
 import {
-  buildDefaultAnimationProps,
   generateEstimatedWordTimestamps,
   type SceneData,
   type SceneType,
@@ -162,6 +161,11 @@ function extractJsonObject(raw: string): unknown {
     .replace(/^```\s*/i, "")
     .replace(/```$/i, "")
     .trim();
+  const firstBrace = cleaned.indexOf("{");
+  const lastBrace = cleaned.lastIndexOf("}");
+  if (firstBrace !== -1 && lastBrace > firstBrace) {
+    return JSON.parse(cleaned.slice(firstBrace, lastBrace + 1));
+  }
   return JSON.parse(cleaned);
 }
 
@@ -714,6 +718,131 @@ function buildDeterministicStoryboard(params: {
   });
 }
 
+function sanitizeAnimationProps(
+  sceneType: SceneType,
+  rawProps: unknown,
+  headline: string,
+  topic: string,
+  sceneIdx: number
+): Record<string, unknown> {
+  const fallback = buildSceneAnimationProps(sceneType, headline, topic, sceneIdx);
+  if (!rawProps || typeof rawProps !== "object" || Array.isArray(rawProps)) {
+    return fallback;
+  }
+  const obj = rawProps as Record<string, unknown>;
+
+  switch (sceneType) {
+    case "diagram_flow": {
+      const rawNodes = Array.isArray(obj.nodes) ? obj.nodes : [];
+      const validNodes = rawNodes
+        .filter((n) => n && typeof n === "object")
+        .slice(0, 5)
+        .map((n, i) => {
+          const rec = n as Record<string, unknown>;
+          return {
+            id: String(rec.id || `s${sceneIdx + 1}_n${i + 1}`),
+            title: String(rec.title || `Step ${i + 1}`).slice(0, 48),
+            subtitle: String(rec.subtitle || headline).slice(0, 72),
+            icon: String(rec.icon || "⚡").slice(0, 6),
+          };
+        });
+      return {
+        flow_direction:
+          obj.flow_direction === "vertical" || obj.flow_direction === "horizontal"
+            ? obj.flow_direction
+            : "auto",
+        nodes: validNodes.length >= 2 ? validNodes : fallback.nodes,
+      };
+    }
+    case "split_comparison": {
+      const sanitizeSide = (side: unknown, defaultSide: Record<string, unknown>) => {
+        if (!side || typeof side !== "object") return defaultSide;
+        const s = side as Record<string, unknown>;
+        const pts = Array.isArray(s.points)
+          ? s.points.map((p) => String(p)).filter(Boolean).slice(0, 4)
+          : [];
+        return {
+          badge_text: String(s.badge_text || defaultSide.badge_text).slice(0, 28),
+          title: String(s.title || defaultSide.title).slice(0, 44),
+          points: pts.length > 0 ? pts : (defaultSide.points as string[]),
+          color_hex:
+            typeof s.color_hex === "string" && /^#[0-9A-Fa-f]{6}$/.test(s.color_hex)
+              ? s.color_hex
+              : defaultSide.color_hex,
+        };
+      };
+      return {
+        left_or_top_card: sanitizeSide(
+          obj.left_or_top_card,
+          fallback.left_or_top_card as Record<string, unknown>
+        ),
+        right_or_bottom_card: sanitizeSide(
+          obj.right_or_bottom_card,
+          fallback.right_or_bottom_card as Record<string, unknown>
+        ),
+      };
+    }
+    case "stat_counter": {
+      const rawBars = Array.isArray(obj.bars) ? obj.bars : [];
+      const validBars = rawBars
+        .filter((b) => b && typeof b === "object")
+        .slice(0, 4)
+        .map((b) => {
+          const rec = b as Record<string, unknown>;
+          return {
+            label: String(rec.label || "Metric").slice(0, 24),
+            value: Math.min(100, Math.max(1, Number(rec.value) || 50)),
+            color_hex:
+              typeof rec.color_hex === "string" && /^#[0-9A-Fa-f]{6}$/.test(rec.color_hex)
+                ? rec.color_hex
+                : "#10B981",
+          };
+        });
+      return {
+        display_mode: obj.display_mode === "big_number" ? "big_number" : "bar_chart",
+        target_number: Math.max(1, Number(obj.target_number) || 87),
+        number_prefix: typeof obj.number_prefix === "string" ? obj.number_prefix.slice(0, 4) : "+",
+        number_suffix: typeof obj.number_suffix === "string" ? obj.number_suffix.slice(0, 6) : "%",
+        takeaway_label: String(obj.takeaway_label || headline).slice(0, 68),
+        bars: validBars.length >= 2 ? validBars : fallback.bars,
+      };
+    }
+    case "kids_counting": {
+      const count = Math.min(10, Math.max(1, Math.round(Number(obj.target_count) || 5)));
+      return {
+        mode: obj.mode === "alphabet" ? "alphabet" : "counting",
+        focus_symbol: String(obj.focus_symbol || fallback.focus_symbol).slice(0, 12),
+        phonetic_word: String(obj.phonetic_word || headline).slice(0, 48),
+        target_count: count,
+        item_label: String(obj.item_label || fallback.item_label).slice(0, 24),
+        item_emoji: String(obj.item_emoji || fallback.item_emoji).slice(0, 6),
+        theme_palette:
+          obj.theme_palette === "pastel" || obj.theme_palette === "chalkboard"
+            ? obj.theme_palette
+            : "playful",
+        confetti_on_complete: obj.confetti_on_complete !== false,
+      };
+    }
+    case "illustrated_motion":
+    default:
+      return {
+        art_style:
+          obj.art_style === "flat_vector" ||
+          obj.art_style === "pixar_3d" ||
+          obj.art_style === "whiteboard"
+            ? obj.art_style
+            : "dark_tech",
+        camera_motion:
+          obj.camera_motion === "zoom_out" ||
+          obj.camera_motion === "pan_left" ||
+          obj.camera_motion === "pan_right"
+            ? obj.camera_motion
+            : "zoom_in",
+        callout_badge: String(obj.callout_badge || fallback.callout_badge).slice(0, 38),
+      };
+  }
+}
+
 export async function generateProjectStoryboard(params: {
   title: string;
   topicPrompt: string;
@@ -738,7 +867,7 @@ Each scene object MUST include:
 - "on_screen_headline": crisp title max 55 chars
 - "narration_text": clear spoken voiceover sentence(s) (~18-24 words per scene)
 - "duration_ms": integer milliseconds between 4200 and 9500
-- "animation_props": valid object for that scene_type (or omit optional subfields).`;
+- "animation_props": structured props matching scene_type (diagram_flow: {nodes:[{id,title,subtitle,icon}]}, split_comparison: {left_or_top_card:{badge_text,title,points},right_or_bottom_card:{badge_text,title,points}}, stat_counter: {target_number,bars:[{label,value}]}, kids_counting: {focus_symbol,target_count,item_label,item_emoji}, illustrated_motion: {camera_motion,callout_badge}).`;
 
   const userPrompt =
     params.mode === "custom_script" && params.customScript?.trim()
@@ -758,13 +887,13 @@ Each scene object MUST include:
         ).trim();
         const rawDur = Number(s.duration_ms) || Math.round((params.durationSec * 1000) / rawScenes.length);
         const durationMs = Math.min(14000, Math.max(3800, Math.round(rawDur / speedClamped)));
-        const props =
-          s.animation_props && typeof s.animation_props === "object" && Object.keys(s.animation_props as object).length > 0
-            ? {
-                ...buildDefaultAnimationProps(sceneType, headline),
-                ...(s.animation_props as Record<string, unknown>),
-              }
-            : buildSceneAnimationProps(sceneType, headline, params.title, idx);
+        const props = sanitizeAnimationProps(
+          sceneType,
+          s.animation_props,
+          headline,
+          params.title,
+          idx
+        );
 
         return {
           scene_id: `sc_${String(idx + 1).padStart(2, "0")}`,

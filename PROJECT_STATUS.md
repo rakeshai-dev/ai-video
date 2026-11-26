@@ -50,7 +50,7 @@
 - **Verification Proof:**
   - `npm --prefix apps/web run typecheck` (`tsc --noEmit`): **0 errors**.
   - `npm --prefix apps/web run build` (`next build`): **22/22 routes compiled & built cleanly**.
-  - Live `F-05` E2E test suite (`7/7` scenarios): **Passed** (auth guards, Quick-Start query hydration, MP3 voice audition streaming, brainstorm API, 8-scene storyboard creation at 0 credit cost, custom script splitting, and cross-tenant `404` isolation).
+  - Live `F-05` E2E test suite (`7/7` scenarios + post-review hardening checks): **Passed** (default `animora-studio.sqlite` WAL startup & crash self-recovery, auth guards, Quick-Start query hydration, MP3 voice audition streaming, `Object.hasOwn` query guards, `voiceId` catalog validation, deep LLM `animation_props` sanitization, 8-scene storyboard creation at 0 credit cost, custom script splitting, and cross-tenant `404` isolation).
 - **Next Active Task:** `F-06` — Steps 2 & 3: Interactive 60fps Storyboard & Animation Studio (`06A/B`).
 
 ### 2026-11-26 — Post-Review Hardening (`F-01`–`F-04` Audit Fixes — `dev` branch)

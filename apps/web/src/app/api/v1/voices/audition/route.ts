@@ -26,10 +26,11 @@ export async function GET(request: NextRequest) {
   const voiceId = searchParams.get("voiceId") || "en-US-ChristopherNeural";
 
   const known = VOICE_CATALOG.find((v) => v.voiceId === voiceId);
-  const sampleFile =
-    SAMPLE_MP3_MAP[voiceId] ||
-    (known ? SAMPLE_MP3_MAP[known.fallbackEdgeVoiceId] : "sc_01.mp3") ||
-    "sc_01.mp3";
+  const sampleFile = Object.hasOwn(SAMPLE_MP3_MAP, voiceId)
+    ? SAMPLE_MP3_MAP[voiceId]
+    : known && Object.hasOwn(SAMPLE_MP3_MAP, known.fallbackEdgeVoiceId)
+    ? SAMPLE_MP3_MAP[known.fallbackEdgeVoiceId]
+    : "sc_01.mp3";
 
   const repoRoot = path.resolve(process.cwd(), "..", "..");
   const audioPath = path.join(repoRoot, "packages", "video-engine", "public", "audio", sampleFile);
@@ -44,6 +45,7 @@ export async function GET(request: NextRequest) {
     headers: {
       "Content-Type": "audio/mpeg",
       "Content-Length": String(bytes.byteLength),
+      "Accept-Ranges": "bytes",
       "Cache-Control": "private, max-age=3600",
     },
   });

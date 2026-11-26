@@ -32,7 +32,14 @@ const createProjectSchema = z.object({
     ])
     .default("diagram_flow"),
   voiceEngine: z.enum(["edge_tts", "elevenlabs"]).default("edge_tts"),
-  voiceId: z.string().trim().min(2).max(80).default("en-US-ChristopherNeural"),
+  voiceId: z
+    .string()
+    .trim()
+    .refine(
+      (id) => VOICE_CATALOG.some((v) => v.voiceId === id),
+      "Selected voice persona is not in the supported voice catalog."
+    )
+    .default("en-US-ChristopherNeural"),
   voiceSpeed: z.number().min(0.8).max(1.4).optional().default(1.0),
   subtitleStyle: z
     .enum(["karaoke_highlight", "hormozi_pop", "kids_read_along", "clean_minimal"])

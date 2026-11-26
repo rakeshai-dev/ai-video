@@ -5,24 +5,60 @@ import { DatabaseSync } from "node:sqlite";
 const DATA_DIR = path.resolve(process.cwd(), "data");
 const DB_PATH = process.env.ANIMORA_DB_PATH
   ? path.resolve(process.env.ANIMORA_DB_PATH)
-  : path.join(DATA_DIR, "animora.sqlite");
+  : path.join(DATA_DIR, "animora-studio.sqlite");
 
 let dbInstance: DatabaseSync | null = null;
 
+function openAndInitializeDatabase(dbPath: string): DatabaseSync {
+  const db = new DatabaseSync(dbPath);
+  try {
+    db.exec(`
+      PRAGMA journal_mode = WAL;
+      PRAGMA foreign_keys = ON;
+    `);
+    const check = db.prepare("PRAGMA quick_check").get() as { quick_check?: string } | undefined;
+    if (check?.quick_check && check.quick_check !== "ok") {
+      throw new Error(`SQLite quick_check failed: ${check.quick_check}`);
+    }
+    return db;
+  } catch (err) {
+    try {
+      db.close();
+    } catch {
+      // ignore close error
+    }
+    throw err;
+  }
+}
+
 /**
  * Returns a singleton SQLite database connection powered by Node.js built-in `node:sqlite`.
- * Schema aligns strictly with DB_DESIGN.md (multi-tenant `user_id` scoping + immutable credit ledger).
+ * Includes automatic stale WAL/SHM sidecar recovery after abrupt process termination.
  */
 export function getDb(): DatabaseSync {
   if (dbInstance) return dbInstance;
 
   fs.mkdirSync(path.dirname(DB_PATH), { recursive: true });
-  const db = new DatabaseSync(DB_PATH);
+
+  let db: DatabaseSync;
+  try {
+    db = openAndInitializeDatabase(DB_PATH);
+  } catch {
+    // Self-heal mismatched or truncated -shm / -wal sidecar files after abrupt crash
+    for (const suffix of ["-shm", "-wal"]) {
+      const sidecar = `${DB_PATH}${suffix}`;
+      if (fs.existsSync(sidecar)) {
+        try {
+          fs.rmSync(sidecar, { force: true });
+        } catch {
+          // ignore if locked
+        }
+      }
+    }
+    db = openAndInitializeDatabase(DB_PATH);
+  }
 
   db.exec(`
-    PRAGMA journal_mode = WAL;
-    PRAGMA foreign_keys = ON;
-
     CREATE TABLE IF NOT EXISTS users (
       id TEXT PRIMARY KEY,
       email TEXT UNIQUE NOT NULL,

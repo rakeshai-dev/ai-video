@@ -27,7 +27,7 @@ export async function GET(request: NextRequest) {
   const key = searchParams.get("name") || "solar";
   const download = searchParams.get("download") === "1";
 
-  const fileName = VIDEO_MAP[key] || VIDEO_MAP.solar;
+  const fileName = Object.hasOwn(VIDEO_MAP, key) ? VIDEO_MAP[key] : VIDEO_MAP.solar;
   const repoRoot = path.resolve(process.cwd(), "..", "..");
   const filePath = path.join(repoRoot, fileName);
 
