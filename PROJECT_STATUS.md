@@ -25,7 +25,7 @@
 | **F-02** | **Public Marketing Homepage** | Fully responsive public homepage (Mobile, Tablet, Laptop, Desktop) matching Stitch `01A` & `01B` with interactive 9:16 solar flowchart preview, 5 animation engines showcase, pricing & CTAs. | `01A`, `01B` | ✅ Completed |
 | **F-03** | **Real Multi-Tenant Auth, Password Reset & Email OTP** | Real salted password hashing, HttpOnly DB sessions, `user_id` tenant isolation, `+15 Free Starter Credits` ledger grant on signup, plus all error states (`401` wrong credentials, `409` duplicate email, `429` rate limit, password strength, forgot/reset password, 6-digit email OTP). | `02A/B`, `03A/B`, `13A/B` | ✅ Completed |
 | **F-04** | **Personal Member Dashboard & Empty Onboarding State** | Protected `/dashboard` route with responsive sidebar/mobile drawer + bottom nav, 4 telemetry cards, 5 Quick-Start Engine Launchers, filterable Projects Grid, and First-Time `0 Projects` Empty Onboarding state. | `04A/B`, `14A/B` | ✅ Completed |
-| **F-05** | **Step 1: AI Brainstorm & Create Video Wizard** | Real `/api/v1/ai/brainstorm` & `/api/v1/projects` creation flow: 5 AI concept cards, `30s/60s/90s`, `9:16`/`16:9`, 5 animation presets, Dual Voiceover toggle (`Edge Neural TTS` vs `ElevenLabs Pro`), and 2×2 voice audition. | `05A/B` | ⏳ Pending |
+| **F-05** | **Step 1: AI Brainstorm & Create Video Wizard** | Real `/api/v1/ai/brainstorm` & `/api/v1/projects` creation flow: 5 AI concept cards, `30s/60s/90s`, `9:16`/`16:9`, 5 animation presets, Dual Voiceover toggle (`Edge Neural TTS` vs `ElevenLabs Pro`), and 2×2 voice audition. | `05A/B` | ✅ Completed |
 | **F-06** | **Steps 2 & 3: Interactive 60fps Storyboard & Animation Studio** | 3-column responsive studio (4-tab switcher on mobile/tablet), live 60fps HTML5 `<canvas>` programmatic renderer for all 5 engines, live scene script/node/subtitle editing, and multi-track timeline synced to DB. | `06A/B` | ⏳ Pending |
 | **F-07** | **Step 4: On-Demand 1080p MP4 Render Pipeline & Failure Auto-Refund** | Real `/api/v1/projects/:id/render` endpoint invoking `packages/video-engine` + Edge Neural TTS + FFmpeg H.264, credit deduction, `0-Credits` non-destructive modal, and automatic credit refund on render failure. | `07A/B`, `14A/B` | ⏳ Pending |
 | **F-08** | **Per-Member Instagram Connect OAuth 2.0 & Sandbox Publisher** | Isolated per-member Instagram OAuth vault (`AES-256-GCM` encrypted tokens), 3-step eligibility check, Personal Account / Expired Token error handling, Sandbox Mock Mode, and direct Reel publish + AI caption writer. | `07A/B`, `09A/B`, `14A/B` | ⏳ Pending |
@@ -37,6 +37,21 @@
 ---
 
 ## 3. Feature Implementation Log (Proof of Work)
+
+### 2026-11-26 — Feature `F-05` Completed & Verified (Step 1: AI Brainstorm & Create Video Wizard — `dev` branch)
+- **Files Created / Updated:**
+  - `apps/web/src/lib/ai-generator.ts` (3-tier AI chain: Gemini 2.5 Flash → Groq Llama 3.3 70B → Topic-Aware Deterministic Engine; dummy `.env.local` key guard; `VOICE_CATALOG` with 4 Edge Neural + 4 ElevenLabs Pro personas; and custom-script + brainstorm `SceneData[]` storyboard builder calibrated to speech speed)
+  - `apps/web/src/app/api/v1/ai/brainstorm/route.ts` (Authenticated `POST` generating 5 structured hook-driven concepts)
+  - `apps/web/src/app/api/v1/voices/route.ts` & `apps/web/src/app/api/v1/voices/audition/route.ts` (Voice catalog + real MP3 neural voice sample streaming)
+  - `apps/web/src/app/api/v1/projects/route.ts` & `apps/web/src/app/api/v1/projects/[id]/route.ts` (`POST` storyboard creation with ElevenLabs → Edge Neural auto-fallback + `0 Credits` draft guarantee, and tenant-isolated `GET` single project)
+  - `apps/web/src/lib/db.ts` & `apps/web/src/lib/projects.ts` (Added `voice_speed` migration column and `getUserProjectById` tenant query)
+  - `apps/web/src/components/CreateVideoWizardClient.tsx` & `apps/web/src/app/dashboard/create/page.tsx` (Responsive Desktop `05A` + Mobile `05B` Create Video Wizard with 4-step stepper, AI Brainstorm vs. Custom Script tabs, `Ctrl+K` shortcut, 5 concept cards, `30s/60s/90s` & `9:16/16:9` pickers, 5 animation engines, Dual Voiceover toggle, live 2×2 MP3 voice audition, and `0.8x–1.3x` cadence slider)
+  - `apps/web/src/app/dashboard/projects/[id]/studio/page.tsx` (Authenticated storyboard handoff screen displaying generated `SceneData[]` scenes)
+- **Verification Proof:**
+  - `npm --prefix apps/web run typecheck` (`tsc --noEmit`): **0 errors**.
+  - `npm --prefix apps/web run build` (`next build`): **22/22 routes compiled & built cleanly**.
+  - Live `F-05` E2E test suite (`7/7` scenarios): **Passed** (auth guards, Quick-Start query hydration, MP3 voice audition streaming, brainstorm API, 8-scene storyboard creation at 0 credit cost, custom script splitting, and cross-tenant `404` isolation).
+- **Next Active Task:** `F-06` — Steps 2 & 3: Interactive 60fps Storyboard & Animation Studio (`06A/B`).
 
 ### 2026-11-26 — Post-Review Hardening (`F-01`–`F-04` Audit Fixes — `dev` branch)
 - **Fixes Applied & Verified:**

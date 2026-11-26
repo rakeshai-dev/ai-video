@@ -432,6 +432,73 @@ export function listUserProjects(userId: string): VideoProjectSummary[] {
   });
 }
 
+export interface VideoProjectDetail extends VideoProjectSummary {
+  voiceSpeed: number;
+  scenes: SceneData[];
+}
+
+export function getUserProjectById(
+  userId: string,
+  projectId: string
+): VideoProjectDetail | null {
+  ensureDemoProjectsSeeded(userId);
+  const db = getDb();
+  const r = db
+    .prepare(
+      `SELECT id, user_id, title, topic_prompt, aspect_ratio, duration_sec,
+              primary_template, voice_engine, voice_id, subtitle_style, voice_speed,
+              status, scenes_json, mp4_path, created_at, updated_at
+       FROM video_projects
+       WHERE id = ? AND user_id = ?
+       LIMIT 1`
+    )
+    .get(projectId, userId) as
+    | {
+        id: string;
+        user_id: string;
+        title: string;
+        topic_prompt: string;
+        aspect_ratio: string;
+        duration_sec: number;
+        primary_template: string;
+        voice_engine: string;
+        voice_id: string;
+        subtitle_style: string;
+        voice_speed: number | null;
+        status: string;
+        scenes_json: string;
+        mp4_path: string | null;
+        created_at: string;
+        updated_at: string;
+      }
+    | undefined;
+
+  if (!r) return null;
+
+  const primaryTemplate = (r.primary_template || "diagram_flow") as SceneType;
+  const scenes = normalizeScenesJson(r.scenes_json, primaryTemplate, r.topic_prompt);
+
+  return {
+    id: r.id,
+    userId: r.user_id,
+    title: r.title,
+    topicPrompt: r.topic_prompt,
+    aspectRatio: r.aspect_ratio === "16:9" ? "16:9" : "9:16",
+    durationSec: r.duration_sec,
+    primaryTemplate,
+    voiceEngine: r.voice_engine,
+    voiceId: r.voice_id,
+    subtitleStyle: (r.subtitle_style || "karaoke_highlight") as SubtitleStyle,
+    voiceSpeed: typeof r.voice_speed === "number" ? r.voice_speed : 1.0,
+    status: r.status as VideoProjectSummary["status"],
+    scenesCount: scenes.length,
+    scenes,
+    mp4Path: r.mp4_path,
+    createdAt: r.created_at,
+    updatedAt: r.updated_at,
+  };
+}
+
 export function getDashboardTelemetry(userId: string) {
   const projects = listUserProjects(userId);
   const db = getDb();

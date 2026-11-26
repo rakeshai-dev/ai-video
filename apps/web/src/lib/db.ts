@@ -3,7 +3,9 @@ import path from "node:path";
 import { DatabaseSync } from "node:sqlite";
 
 const DATA_DIR = path.resolve(process.cwd(), "data");
-const DB_PATH = path.join(DATA_DIR, "animora.sqlite");
+const DB_PATH = process.env.ANIMORA_DB_PATH
+  ? path.resolve(process.env.ANIMORA_DB_PATH)
+  : path.join(DATA_DIR, "animora.sqlite");
 
 let dbInstance: DatabaseSync | null = null;
 
@@ -14,7 +16,7 @@ let dbInstance: DatabaseSync | null = null;
 export function getDb(): DatabaseSync {
   if (dbInstance) return dbInstance;
 
-  fs.mkdirSync(DATA_DIR, { recursive: true });
+  fs.mkdirSync(path.dirname(DB_PATH), { recursive: true });
   const db = new DatabaseSync(DB_PATH);
 
   db.exec(`
@@ -107,6 +109,7 @@ export function getDb(): DatabaseSync {
       voice_engine TEXT NOT NULL DEFAULT 'edge_tts',
       voice_id TEXT NOT NULL DEFAULT 'en-US-ChristopherNeural',
       subtitle_style TEXT NOT NULL DEFAULT 'karaoke_highlight',
+      voice_speed REAL NOT NULL DEFAULT 1.0,
       status TEXT NOT NULL DEFAULT 'draft',
       scenes_json TEXT NOT NULL DEFAULT '[]',
       mp4_path TEXT,
@@ -140,6 +143,12 @@ export function getDb(): DatabaseSync {
   }
   if (!colNames.has("demo_seeded")) {
     db.exec("ALTER TABLE users ADD COLUMN demo_seeded INTEGER NOT NULL DEFAULT 0");
+  }
+
+  const projCols = db.prepare("PRAGMA table_info(video_projects)").all() as Array<{ name: string }>;
+  const projColNames = new Set(projCols.map((c) => c.name));
+  if (!projColNames.has("voice_speed")) {
+    db.exec("ALTER TABLE video_projects ADD COLUMN voice_speed REAL NOT NULL DEFAULT 1.0");
   }
 
   dbInstance = db;
