@@ -2,6 +2,7 @@
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import type { VideoProjectDetail } from "@/lib/projects";
 import type { CreditLedgerEntry, RenderJobRecord } from "@/lib/render-engine";
 
@@ -42,6 +43,7 @@ export default function RenderPublishClient({
   userHandle,
   instagramConnected,
 }: RenderPublishClientProps) {
+  const router = useRouter();
   const [project, setProject] = useState<VideoProjectDetail>(initialProject);
   const [latestRender, setLatestRender] = useState<RenderJobRecord | null>(initialRender);
   const [ledger, setLedger] = useState<CreditLedgerEntry[]>(initialLedger);
@@ -114,6 +116,7 @@ export default function RenderPublishClient({
           if (parsed.phase === "render_complete" || parsed.phase === "render_failed") {
             es.close();
             void refreshRenderState();
+            router.refresh();
           }
         } catch {
           // ignore malformed SSE event
@@ -172,6 +175,7 @@ export default function RenderPublishClient({
       }
       if (typeof data.remainingBalance === "number") {
         setCreditsBalance(data.remainingBalance);
+        router.refresh();
       }
       await refreshRenderState();
     } catch (err) {
@@ -196,6 +200,7 @@ export default function RenderPublishClient({
         throw new Error(data?.error || "Top-up failed.");
       }
       setCreditsBalance(data.creditsBalance);
+      router.refresh();
       setShowZeroCreditsModal(false);
       await startRender(true);
     } catch (err) {

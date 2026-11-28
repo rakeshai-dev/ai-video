@@ -1,4 +1,5 @@
 import crypto from "node:crypto";
+import fs from "node:fs";
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { getCurrentUser } from "@/lib/auth";
@@ -186,6 +187,19 @@ export async function DELETE(request: NextRequest) {
   }
 
   const db = getDb();
+  // Collect rendered MP4 paths before cascade delete so disk stays clean
+  let mp4Paths: string[] = [];
+  try {
+    const rows = db
+      .prepare(
+        "SELECT output_mp4_path FROM renders WHERE project_id = ? AND user_id = ? AND output_mp4_path IS NOT NULL"
+      )
+      .all(projectId, user.id) as Array<{ output_mp4_path: string | null }>;
+    mp4Paths = rows.map((r) => r.output_mp4_path).filter((p): p is string => Boolean(p));
+  } catch {
+    mp4Paths = [];
+  }
+
   // Strict multi-tenant isolation: DELETE only if both id AND user_id match
   const result = db
     .prepare("DELETE FROM video_projects WHERE id = ? AND user_id = ?")
@@ -193,6 +207,14 @@ export async function DELETE(request: NextRequest) {
 
   if (result.changes === 0) {
     return NextResponse.json({ error: "Project not found in your workspace." }, { status: 404 });
+  }
+
+  for (const filePath of mp4Paths) {
+    try {
+      if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
+    } catch {
+      // ignore file cleanup error
+    }
   }
 
   return NextResponse.json({ status: "deleted", id: projectId });
