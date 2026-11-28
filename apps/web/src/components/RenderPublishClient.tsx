@@ -1129,9 +1129,12 @@ export default function RenderPublishClient({
                           lastDispatchedReel.scheduledFor
                         ).toLocaleString()}`}
                   </span>
-                  <span className="px-2 py-0.5 rounded bg-[#10B981]/20 font-mono text-[10px] text-[#9BFFCE]">
-                    {igAccount?.sandboxMode ? "SANDBOX MOCK" : "GRAPH v21.0"}
-                  </span>
+                  <Link
+                    href="/dashboard/calendar"
+                    className="px-2.5 py-0.5 rounded bg-[#10B981]/20 hover:bg-[#10B981]/30 font-mono text-[10px] text-[#9BFFCE] font-bold"
+                  >
+                    Open Calendar →
+                  </Link>
                 </div>
                 {lastDispatchedReel.igContainerId && (
                   <div className="font-mono text-[10px] text-[#E4E4E7] flex flex-wrap items-center gap-2">

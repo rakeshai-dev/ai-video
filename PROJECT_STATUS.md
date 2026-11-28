@@ -29,7 +29,7 @@
 | **F-06** | **Steps 2 & 3: Interactive 60fps Storyboard & Animation Studio** | 3-column responsive studio (4-tab switcher on mobile/tablet), live 60fps HTML5 `<canvas>` programmatic renderer for all 5 engines, live scene script/node/subtitle editing, and multi-track timeline synced to DB. | `06A/B` | ✅ Completed |
 | **F-07** | **Step 4: On-Demand 1080p MP4 Render Pipeline & Failure Auto-Refund** | Real `/api/v1/projects/:id/render` endpoint invoking `packages/video-engine` + Edge Neural TTS + FFmpeg H.264, credit deduction, `0-Credits` non-destructive modal, and automatic credit refund on render failure. | `07A/B`, `14A/B` | ✅ Completed |
 | **F-08** | **Per-Member Instagram Connect OAuth 2.0 & Sandbox Publisher** | Isolated per-member Instagram OAuth vault (`AES-256-GCM` encrypted tokens), 3-step eligibility check, Personal Account / Expired Token error handling, Sandbox Mock Mode, and direct Reel publish + AI caption writer. | `07A/B`, `09A/B`, `14A/B` | ✅ Completed |
-| **F-09** | **Content Calendar & Automated Scheduled Reels Queue** | Full-screen 2×3 Scheduled Reels Grid + Active Queue Inspector drawer, schedule/reschedule/cancel/retry dispatch API, and background scheduler cron worker. | `08A/B` | ⏳ Pending |
+| **F-09** | **Content Calendar & Automated Scheduled Reels Queue** | Full-screen 2×3 Scheduled Reels Grid + Active Queue Inspector drawer, schedule/reschedule/cancel/retry dispatch API, and background scheduler cron worker. | `08A/B` | ✅ Completed |
 | **F-10** | **Personal Brand Kit Studio** | Per-member brand colors, font stack, 4 word-synced subtitle presets, default voice & watermark safe-zone controls with live 9:16 preview stage persisted to DB. | `10A/B` | ⏳ Pending |
 | **F-11** | **Video Credits Billing, Plan Tiers & Immutable Audit Ledger** | Real `credit_ledger` table, credit balance telemetry, plan tier cards, instant top-up simulation/Stripe hook, and CSV audit log export. | `11A/B` | ⏳ Pending |
 | **F-12** | **Account Profile, Security Vault, Webhooks & API Keys** | Profile/timezone settings, TOTP 2FA & active device session revocation, Discord/Slack/email render webhooks, headless API key generation, and isolated workspace deletion. | `12A/B` | ⏳ Pending |
@@ -37,6 +37,17 @@
 ---
 
 ## 3. Feature Implementation Log (Proof of Work)
+
+### 2026-11-28 — Feature `F-09` Completed & Verified (Content Calendar & Automated Scheduled Reels Queue — `dev` branch)
+- **Files Created / Updated:**
+  - `apps/web/src/lib/schedule.ts` (Tenant-isolated scheduled Reels queue queries joined with `video_projects`, singleton 30-second background auto-dispatch cron worker + on-demand due-slot sweep, reschedule/caption edit, slot cancellation restoring project status, and `Force Instant Publish` / `Retry Dispatch` engine)
+  - `apps/web/src/app/api/v1/schedule/route.ts`, `[id]/route.ts`, `[id]/dispatch/route.ts`, and `run-due/route.ts` (Authenticated `GET` list with status/month filters, `GET`/`PATCH`/`DELETE` single scheduled slot, `POST` instant/retry dispatch, and `POST` due-slot cron sweep)
+  - `apps/web/src/components/ContentCalendarClient.tsx`, `apps/web/src/app/dashboard/calendar/page.tsx`, and `apps/web/src/components/RenderPublishClient.tsx` (Responsive Content Calendar matching Stitch `08A/B`: 3 view modes `Schedule Cards Grid` / `Weekly Timeline` / `Queue List`, status filter chips, sticky `Active Queue Inspector` with `<video>` preview & inline reschedule/caption editor, `Force Instant Publish to Instagram`, `Retry Dispatch`, and `+ Schedule New Reel` modal)
+- **Verification Proof:**
+  - `npm --prefix apps/web run typecheck` (`tsc --noEmit`): **0 errors**.
+  - Live `F-09` API & Auto-Cron E2E Suite (`7/7` scenarios on `http://localhost:3010`): **Passed** (`401` auth guards across all 6 endpoints, multi-slot scheduling & filters, cross-tenant `404` isolation, `PATCH` reschedule/caption update, failed dispatch → `Retry Dispatch` → `published` recovery, automatic overdue cron sweep, and `DELETE` slot cancellation).
+  - Live Browser QA (`5/5` checks on `http://localhost:3010/dashboard/calendar`, `0` console errors): **Passed** (Empty Queue State, `+ Schedule New Reel` modal, switching across `Schedule Cards Grid` / `Weekly Timeline` / `Queue List`, `Active Queue Inspector` `<video>` preview + caption save + `Force Instant Publish to Instagram`, and clean slot cancellation).
+- **Next Active Task:** `F-10` — Personal Brand Kit Studio (`10A/B`).
 
 ### 2026-11-28 — Feature `F-08` Completed & Verified (Per-Member Instagram Connect OAuth 2.0 & Sandbox Publisher — `dev` branch)
 - **Files Created / Updated:**
