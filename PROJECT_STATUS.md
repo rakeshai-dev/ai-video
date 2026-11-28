@@ -30,13 +30,25 @@
 | **F-07** | **Step 4: On-Demand 1080p MP4 Render Pipeline & Failure Auto-Refund** | Real `/api/v1/projects/:id/render` endpoint invoking `packages/video-engine` + Edge Neural TTS + FFmpeg H.264, credit deduction, `0-Credits` non-destructive modal, and automatic credit refund on render failure. | `07A/B`, `14A/B` | ✅ Completed |
 | **F-08** | **Per-Member Instagram Connect OAuth 2.0 & Sandbox Publisher** | Isolated per-member Instagram OAuth vault (`AES-256-GCM` encrypted tokens), 3-step eligibility check, Personal Account / Expired Token error handling, Sandbox Mock Mode, and direct Reel publish + AI caption writer. | `07A/B`, `09A/B`, `14A/B` | ✅ Completed |
 | **F-09** | **Content Calendar & Automated Scheduled Reels Queue** | Full-screen 2×3 Scheduled Reels Grid + Active Queue Inspector drawer, schedule/reschedule/cancel/retry dispatch API, and background scheduler cron worker. | `08A/B` | ✅ Completed |
-| **F-10** | **Personal Brand Kit Studio** | Per-member brand colors, font stack, 4 word-synced subtitle presets, default voice & watermark safe-zone controls with live 9:16 preview stage persisted to DB. | `10A/B` | ⏳ Pending |
+| **F-10** | **Personal Brand Kit Studio** | Per-member brand colors, font stack, 4 word-synced subtitle presets, default voice & watermark safe-zone controls with live 9:16 preview stage persisted to DB. | `10A/B` | ✅ Completed |
 | **F-11** | **Video Credits Billing, Plan Tiers & Immutable Audit Ledger** | Real `credit_ledger` table, credit balance telemetry, plan tier cards, instant top-up simulation/Stripe hook, and CSV audit log export. | `11A/B` | ⏳ Pending |
 | **F-12** | **Account Profile, Security Vault, Webhooks & API Keys** | Profile/timezone settings, TOTP 2FA & active device session revocation, Discord/Slack/email render webhooks, headless API key generation, and isolated workspace deletion. | `12A/B` | ⏳ Pending |
 
 ---
 
 ## 3. Feature Implementation Log (Proof of Work)
+
+### 2026-11-28 — Feature `F-10` Completed & Verified (Personal Brand Kit Studio — `dev` branch)
+- **Files Created / Updated:**
+  - `apps/web/src/lib/brand-kit.ts` (Idempotent `brand_kits` columns for `surface_color`, `body_font`, `watermark_opacity`, `safe_zone_guides`, `sync_active_projects`; tenant-isolated `getMemberBrandKit`, `updateMemberBrandKit` with atomic active-draft propagation, and `resetMemberBrandKit`)
+  - `apps/web/src/app/api/v1/brand-kit/route.ts` & `apps/web/src/app/api/v1/brand-kit/reset/route.ts` (Authenticated `GET` / `PUT` with Zod 6-digit hex & voice catalog validation + `POST` studio defaults reset)
+  - `apps/web/src/components/BrandKitStudioClient.tsx` & `apps/web/src/app/dashboard/brand-kit/page.tsx` (Responsive Personal Brand Kit Studio matching Stitch `10A/B`: 4 Quick Theme Palettes, 4 Procedural Color Token pickers, Typography Stack, 2×2 Word-Synced Subtitle Preset cards, MP3 Voice Audition, Watermark Corner Pin & Opacity, Reels Safe-Zone Wireframe toggle, JSON Token Export, and sticky Live `9:16` Brand Kit Stage)
+  - `apps/web/src/app/dashboard/create/page.tsx` & `apps/web/src/components/CreateVideoWizardClient.tsx` (Pre-populates new storyboards with the member's saved Brand Kit default voice persona)
+- **Verification Proof:**
+  - `npm --prefix apps/web run typecheck` (`tsc --noEmit`): **0 errors**.
+  - Live `F-10` API & Propagation E2E Suite (`6/6` scenarios on `http://localhost:3010`): **Passed** (`401` auth guards, `400` hex/voice validation guards, `PUT` save + `Sync Active Projects` draft propagation + cross-tenant isolation, new project Brand Kit inheritance, SSR `200 OK`, and `POST` reset defaults).
+  - Live Browser QA (`4/4` checks on `http://localhost:3010/dashboard/brand-kit`, `0` console errors): **Passed** (live `Cyberpunk` + `Montserrat` + `Hormozi Pop Scale` + `bottom-right` watermark + Safe-Zone wireframe toggle on the `9:16` preview stage, SQLite reload persistence, and `Reset Defaults`).
+- **Next Active Task:** `F-11` — Video Credits Billing, Plan Tiers & Immutable Audit Ledger (`11A/B`).
 
 ### 2026-11-28 — Feature `F-09` Completed & Verified (Content Calendar & Automated Scheduled Reels Queue — `dev` branch)
 - **Files Created / Updated:**

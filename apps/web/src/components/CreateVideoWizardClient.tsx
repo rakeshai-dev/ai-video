@@ -16,6 +16,8 @@ interface CreateVideoWizardClientProps {
   initialTemplate: SceneType;
   initialIdeas: BrainstormIdea[];
   initialProvider: string;
+  defaultVoiceEngine?: "edge_tts" | "elevenlabs";
+  defaultVoiceId?: string;
 }
 
 const INSPIRATION_PRESETS: Array<{
@@ -90,6 +92,8 @@ export default function CreateVideoWizardClient({
   initialTemplate,
   initialIdeas,
   initialProvider,
+  defaultVoiceEngine,
+  defaultVoiceId,
 }: CreateVideoWizardClientProps) {
   const router = useRouter();
   const promptInputRef = useRef<HTMLInputElement | null>(null);
@@ -118,11 +122,14 @@ export default function CreateVideoWizardClient({
   );
   const [aspectRatio, setAspectRatio] = useState<"9:16" | "16:9">("9:16");
   const [primaryTemplate, setPrimaryTemplate] = useState<SceneType>(initialTemplate);
-  const [voiceEngine, setVoiceEngine] = useState<"edge_tts" | "elevenlabs">("edge_tts");
+  const [voiceEngine, setVoiceEngine] = useState<"edge_tts" | "elevenlabs">(
+    defaultVoiceEngine || "edge_tts"
+  );
   const [voiceId, setVoiceId] = useState<string>(
-    initialTemplate === "kids_counting"
-      ? "en-US-AnaNeural"
-      : initialIdeas[0]?.recommendedVoiceId || "en-US-ChristopherNeural"
+    defaultVoiceId ||
+      (initialTemplate === "kids_counting"
+        ? "en-US-AnaNeural"
+        : initialIdeas[0]?.recommendedVoiceId || "en-US-ChristopherNeural")
   );
   const [voiceSpeed, setVoiceSpeed] = useState<number>(1.0);
 

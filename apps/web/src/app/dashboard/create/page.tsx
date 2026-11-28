@@ -1,6 +1,7 @@
 import React from "react";
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth";
+import { getMemberBrandKit } from "@/lib/brand-kit";
 import {
   generateBrainstormIdeas,
   isRealApiKey,
@@ -49,6 +50,10 @@ export default async function CreateVideoWizardPage({
   });
 
   const elevenlabsConfigured = isRealApiKey(process.env.ELEVENLABS_API_KEY);
+  const brandKit = getMemberBrandKit(
+    user.id,
+    user.instagramHandle || `@${user.workspaceSlug}`
+  );
 
   return (
     <CreateVideoWizardClient
@@ -59,6 +64,8 @@ export default async function CreateVideoWizardPage({
       initialTemplate={initialTemplate}
       initialIdeas={ideas}
       initialProvider={providerUsed}
+      defaultVoiceEngine={brandKit.defaultVoiceEngine}
+      defaultVoiceId={brandKit.defaultVoiceId}
     />
   );
 }
