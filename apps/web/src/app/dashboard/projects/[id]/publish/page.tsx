@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import DashboardShell from "@/components/DashboardShell";
 import RenderPublishClient from "@/components/RenderPublishClient";
 import { getCurrentUser } from "@/lib/auth";
+import { getMemberInstagramAccount } from "@/lib/instagram";
 import { getUserProjectById } from "@/lib/projects";
 import {
   calculateRenderCreditCost,
@@ -36,11 +37,13 @@ export default async function ProjectPublishPage({
   );
   const latestRender = getLatestRenderForProject(user.id, project.id);
   const recentLedger = getRecentCreditLedger(user.id, 6);
+  const igAccount = getMemberInstagramAccount(user.id);
   const cleanHandle = (
+    igAccount?.cleanUsername ||
     user.instagramHandle ||
     user.workspaceSlug ||
     "animora_creator"
-  ).replace(/^@/, "");
+  ).replace(/^@+/, "");
 
   return (
     <DashboardShell
@@ -57,6 +60,7 @@ export default async function ProjectPublishPage({
         tierLabel={tierLabel}
         userHandle={cleanHandle}
         instagramConnected={user.instagramConnected}
+        initialIgAccount={igAccount}
       />
     </DashboardShell>
   );

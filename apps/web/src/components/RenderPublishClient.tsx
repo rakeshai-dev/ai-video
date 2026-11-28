@@ -5,6 +5,11 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import type { VideoProjectDetail } from "@/lib/projects";
 import type { CreditLedgerEntry, RenderJobRecord } from "@/lib/render-engine";
+import type {
+  InstagramVaultAccount,
+  PublishedOrScheduledReel,
+  SocialCaptionTone,
+} from "@/lib/instagram";
 
 interface RenderPublishClientProps {
   initialProject: VideoProjectDetail;
@@ -15,9 +20,8 @@ interface RenderPublishClientProps {
   tierLabel: string;
   userHandle: string;
   instagramConnected: boolean;
+  initialIgAccount: InstagramVaultAccount | null;
 }
-
-type CaptionTone = "educational" | "kids" | "viral";
 
 function formatBytes(bytes: number): string {
   if (!bytes || bytes <= 0) return "—";
@@ -42,12 +46,14 @@ export default function RenderPublishClient({
   tierLabel,
   userHandle,
   instagramConnected,
+  initialIgAccount,
 }: RenderPublishClientProps) {
   const router = useRouter();
   const [project, setProject] = useState<VideoProjectDetail>(initialProject);
   const [latestRender, setLatestRender] = useState<RenderJobRecord | null>(initialRender);
   const [ledger, setLedger] = useState<CreditLedgerEntry[]>(initialLedger);
   const [creditsBalance, setCreditsBalance] = useState<number>(initialCreditsBalance);
+  const [igAccount, setIgAccount] = useState<InstagramVaultAccount | null>(initialIgAccount);
 
   // Export configuration
   const [aspectRatio, setAspectRatio] = useState<"9:16" | "16:9">(
@@ -61,12 +67,25 @@ export default function RenderPublishClient({
   const [selectedTopupPack, setSelectedTopupPack] = useState<"25_cr" | "60_cr">("60_cr");
   const [toppingUp, setToppingUp] = useState<boolean>(false);
 
-  // Video player & copy helpers
+  // Video player & Instagram Publisher states
   const [videoCurrentSec, setVideoCurrentSec] = useState<number>(0);
   const [videoDurationSec, setVideoDurationSec] = useState<number>(0);
   const [copiedUrl, setCopiedUrl] = useState<boolean>(false);
   const [copiedCaption, setCopiedCaption] = useState<boolean>(false);
-  const [captionTone, setCaptionTone] = useState<CaptionTone>("educational");
+  const [captionTone, setCaptionTone] = useState<SocialCaptionTone>("educational");
+  const [doiAutoComment, setDoiAutoComment] = useState<boolean>(true);
+  const [generatingAiCaption, setGeneratingAiCaption] = useState<boolean>(false);
+  const [publishingMode, setPublishingMode] = useState<"now" | "schedule" | null>(null);
+  const [lastDispatchedReel, setLastDispatchedReel] =
+    useState<PublishedOrScheduledReel | null>(null);
+  const [scheduleDateTime, setScheduleDateTime] = useState<string>(() => {
+    const tomorrow = new Date(Date.now() + 24 * 3600 * 1000);
+    tomorrow.setHours(9, 0, 0, 0);
+    const pad = (n: number) => String(n).padStart(2, "0");
+    return `${tomorrow.getFullYear()}-${pad(tomorrow.getMonth() + 1)}-${pad(
+      tomorrow.getDate()
+    )}T${pad(tomorrow.getHours())}:${pad(tomorrow.getMinutes())}`;
+  });
   const [actionError, setActionError] = useState<string | null>(null);
 
   const eventSourceRef = useRef<EventSource | null>(null);
@@ -237,17 +256,109 @@ export default function RenderPublishClient({
     latestRender?.totalFrames ||
     Math.max(fps * 2, Math.ceil((totalStoryboardMs / 1000) * fps));
 
-  const generatedCaptions = useMemo<Record<CaptionTone, string>>(() => {
+  const generatedCaptions = useMemo<Record<SocialCaptionTone, string>>(() => {
+    const activeHandle = igAccount?.handle || `@${userHandle}`;
     const headlines = project.scenes
       .slice(0, 3)
       .map((s, idx) => `${idx + 1}. ${s.on_screen_headline}`)
       .join("\n");
     return {
-      educational: `${project.title} — explained visually step by step!\n\n${headlines}\n\nSave this Reel for quick revision & follow @${userHandle} for more animated breakdowns.\n\n#AnimatedExplainer #STEMEducation #LearnOnReels #AnimoraStudio`,
-      kids: `Let's learn together: ${project.title}! 🌟\n\nCount, read along with highlighted words, and explore step by step:\n${headlines}\n\n#KidsLearning #EarlyEducation #ReadAlong #AnimatedKids`,
-      viral: `99% of people get this wrong about ${project.title} ⚡👇\n\nWatch till Scene ${project.scenes.length} to see how it actually works:\n${headlines}\n\n#ExplainerVideo #TechFacts #VisualLearning #ReelsGrowth`,
+      educational: `${project.title} — explained visually step by step! ☀️⚡\n\n${headlines}\n\nSave this Reel for quick revision & follow ${activeHandle} for more animated breakdowns.\n\n#AnimatedExplainer #STEMEducation #LearnOnReels #AnimoraStudio`,
+      kids_parent_friendly: `Let's learn together: ${project.title}! 🌟🎨\n\nCount, read along with highlighted words, and explore step by step:\n${headlines}\n\n#KidsLearning #EarlyEducation #ReadAlong #AnimatedKids`,
+      viral_hook: `99% of people get this wrong about ${project.title} ⚡👇\n\nWatch till Scene ${project.scenes.length} to see how it actually works:\n${headlines}\n\n#ExplainerVideo #TechFacts #VisualLearning #ReelsGrowth`,
+      professional_brand: `Executive Breakdown: ${project.title} 📊\n\nKey insights:\n${headlines}\n\nFollow ${activeHandle} for concise visual briefings.\n\n#DataStorytelling #IndustryInsights #AnimoraStudio`,
     };
-  }, [project.scenes, project.title, userHandle]);
+  }, [igAccount?.handle, project.scenes, project.title, userHandle]);
+
+  const [captionDraft, setCaptionDraft] = useState<string>(
+    () => generatedCaptions.educational
+  );
+
+  const handleSelectCaptionTone = async (nextTone: SocialCaptionTone) => {
+    setCaptionTone(nextTone);
+    setCaptionDraft(generatedCaptions[nextTone]);
+    setGeneratingAiCaption(true);
+    try {
+      const res = await fetch(`/api/v1/projects/${project.id}/generate-caption`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          tone: nextTone,
+          includeCta: true,
+          doiAutoComment,
+        }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data?.fullFormattedCaption) {
+          setCaptionDraft(data.fullFormattedCaption);
+        }
+      }
+    } catch {
+      // keep instant local caption draft if offline
+    } finally {
+      setGeneratingAiCaption(false);
+    }
+  };
+
+  const handleRotateExpiredIgToken = async () => {
+    try {
+      const res = await fetch("/api/v1/instagram/refresh", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ simulateExpired: false }),
+      });
+      const data = await res.json();
+      if (res.ok && data?.account) {
+        setIgAccount(data.account);
+        setActionError(null);
+        router.refresh();
+      }
+    } catch {
+      setActionError("Could not rotate Instagram OAuth token.");
+    }
+  };
+
+  const handlePublishReel = async (mode: "now" | "schedule") => {
+    setActionError(null);
+    setPublishingMode(mode);
+    try {
+      const scheduledIso =
+        mode === "schedule" ? new Date(scheduleDateTime).toISOString() : null;
+      const res = await fetch("/api/v1/publish/instagram", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          projectId: project.id,
+          renderId: latestRender?.id || null,
+          caption: captionDraft,
+          mode,
+          scheduledFor: scheduledIso,
+          doiAutoComment,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        if (data?.code === "TOKEN_DEGRADED" && igAccount) {
+          setIgAccount({ ...igAccount, isExpired: true, status: "expired" });
+        }
+        throw new Error(data?.error || "Failed to publish Reel to Instagram.");
+      }
+
+      setLastDispatchedReel(data.post);
+      setProject((prev) => ({
+        ...prev,
+        status: mode === "schedule" ? "scheduled" : "published",
+      }));
+      router.refresh();
+    } catch (err) {
+      setActionError(
+        err instanceof Error ? err.message : "Instagram Reels dispatch failed."
+      );
+    } finally {
+      setPublishingMode(null);
+    }
+  };
 
   const progressPct =
     latestRender?.status === "completed"
@@ -792,41 +903,108 @@ export default function RenderPublishClient({
             </div>
           </section>
 
-          {/* AI Social Copywriter & Instagram Publisher Handoff (Stitch 07A Right Column) */}
+          {/* Target Creator Account Card (Stitch 07A) */}
+          <section className="p-5 rounded-2xl bg-[#121216] border border-[#27272A] space-y-3">
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex items-center gap-3 min-w-0">
+                <div className="w-11 h-11 rounded-full p-[2px] bg-gradient-to-tr from-[#F59E0B] via-[#FF4F28] to-[#EC4899] shrink-0">
+                  <div className="w-full h-full rounded-full bg-[#09090B] flex items-center justify-center">
+                    <span className="material-symbols-outlined text-[#FF4F28] text-lg">
+                      {igAccount && !igAccount.isExpired ? "verified" : "link"}
+                    </span>
+                  </div>
+                </div>
+                <div className="min-w-0">
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    <span className="font-display font-bold text-sm text-white truncate">
+                      {igAccount ? igAccount.handle : `@${userHandle}`}
+                    </span>
+                    <span
+                      className={`px-2 py-0.5 rounded-full font-mono text-[10px] font-bold ${
+                        !igAccount
+                          ? "bg-[#18181D] text-[#A1A1AA]"
+                          : igAccount.isExpired
+                            ? "bg-[#EF4444]/20 text-[#FCA5A5]"
+                            : "bg-[#10B981]/15 text-[#9BFFCE]"
+                      }`}
+                    >
+                      {!igAccount
+                        ? "Disconnected"
+                        : igAccount.isExpired
+                          ? "TOKEN_DEGRADED"
+                          : igAccount.sandboxMode
+                            ? "Sandbox Connected"
+                            : "Graph API Connected"}
+                    </span>
+                  </div>
+                  <div className="text-[11px] text-[#A1A1AA] truncate">
+                    {igAccount
+                      ? `${(igAccount.followersCount / 1000).toFixed(1)}K Followers • ${
+                          igAccount.accountType
+                        } Account`
+                      : instagramConnected
+                        ? "Creator Account Linked"
+                        : "Pair a Creator or Business account to publish Reels"}
+                  </div>
+                </div>
+              </div>
+
+              <Link
+                href="/dashboard/integrations"
+                className="px-3 py-1.5 rounded-xl bg-[#18181D] hover:bg-[#27272A] border border-[#27272A] font-display font-bold text-xs text-white shrink-0"
+              >
+                {igAccount ? "Switch Account" : "Connect IG"}
+              </Link>
+            </div>
+
+            {igAccount?.isExpired && (
+              <div className="p-3 rounded-xl bg-[#EF4444]/15 border border-[#EF4444]/35 flex items-center justify-between gap-2 text-xs">
+                <span className="text-[#FCA5A5]">
+                  60-day OAuth token expired for {igAccount.handle}.
+                </span>
+                <button
+                  type="button"
+                  onClick={() => void handleRotateExpiredIgToken()}
+                  className="px-2.5 py-1 rounded-lg bg-[#EF4444] text-white font-display font-bold text-[11px] shrink-0"
+                >
+                  Re-Authenticate →
+                </button>
+              </div>
+            )}
+          </section>
+
+          {/* AI Social Copywriter & Dual Reels Publishing Card (Stitch 07A Right Column) */}
           <section className="p-6 rounded-2xl bg-[#121216] border border-[#27272A] space-y-4">
             <div className="flex items-center justify-between gap-2">
-              <div>
-                <h3 className="font-display font-bold text-sm text-white">
-                  AI Social Copywriter &amp; Reels Prep
+              <div className="flex items-center gap-2">
+                <span className="material-symbols-outlined text-[#FF4F28] text-[18px]">
+                  auto_awesome
+                </span>
+                <h3 className="font-display font-bold text-xs uppercase tracking-wider text-white">
+                  AI Social Copywriter &amp; SEO
                 </h3>
-                <p className="text-[11px] text-[#A1A1AA]">
-                  Auto-generated from your {project.scenes.length}-scene storyboard
-                </p>
               </div>
-              <span
-                className={`px-2.5 py-1 rounded-full font-mono text-[10px] font-bold ${
-                  instagramConnected
-                    ? "bg-[#10B981]/15 text-[#9BFFCE]"
-                    : "bg-[#18181D] text-[#A1A1AA]"
-                }`}
-              >
-                {instagramConnected ? `@${userHandle}` : "IG Not Linked"}
+              <span className="font-mono text-[10px] text-[#71717A]">
+                {generatingAiCaption
+                  ? "Generating..."
+                  : `${captionDraft.length} / 2,200 chars`}
               </span>
             </div>
 
-            <div className="grid grid-cols-3 gap-1.5 p-1 rounded-xl bg-[#09090B] border border-[#27272A]">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5 p-1 rounded-xl bg-[#09090B] border border-[#27272A]">
               {(
                 [
                   { id: "educational", label: "Educational" },
-                  { id: "kids", label: "Kids/Parents" },
-                  { id: "viral", label: "Viral Hook 🔥" },
+                  { id: "kids_parent_friendly", label: "Kids/Parents" },
+                  { id: "viral_hook", label: "Viral Hook 🔥" },
+                  { id: "professional_brand", label: "Brand Pro" },
                 ] as const
               ).map((t) => (
                 <button
                   key={t.id}
                   type="button"
-                  onClick={() => setCaptionTone(t.id)}
-                  className={`py-1.5 rounded-lg font-display font-bold text-[11px] transition-colors ${
+                  onClick={() => void handleSelectCaptionTone(t.id)}
+                  className={`py-1.5 px-2 rounded-lg font-display font-bold text-[11px] transition-colors truncate ${
                     captionTone === t.id
                       ? "bg-[#FF4F28] text-[#09090B]"
                       : "text-[#A1A1AA] hover:text-white"
@@ -838,25 +1016,138 @@ export default function RenderPublishClient({
             </div>
 
             <textarea
-              rows={6}
-              readOnly
-              value={generatedCaptions[captionTone]}
-              className="w-full p-3 rounded-xl bg-[#09090B] border border-[#27272A] text-xs text-[#E4E4E7] leading-relaxed outline-none"
+              rows={5}
+              value={captionDraft}
+              onChange={(e) => setCaptionDraft(e.target.value.slice(0, 2200))}
+              aria-label="Instagram Reel caption and hashtags"
+              className="w-full p-3 rounded-xl bg-[#09090B] border border-[#27272A] focus:border-[#FF4F28] text-xs text-[#E4E4E7] leading-relaxed outline-none"
             />
 
-            <div className="flex items-center justify-between gap-2">
-              <button
-                type="button"
-                onClick={() => {
-                  void navigator.clipboard?.writeText(generatedCaptions[captionTone]);
-                  setCopiedCaption(true);
-                  setTimeout(() => setCopiedCaption(false), 2000);
-                }}
-                className="flex-1 py-2.5 px-4 rounded-xl bg-[#18181D] hover:bg-[#27272A] border border-[#27272A] font-display font-bold text-xs text-white"
-              >
-                {copiedCaption ? "Caption Copied ✓" : "Copy Caption & Hashtags"}
-              </button>
+            <div className="flex items-center justify-between gap-3 p-3 rounded-xl bg-[#09090B] border border-[#27272A]">
+              <div>
+                <div className="font-display font-bold text-xs text-white">
+                  DOI / Source Citation Auto-Comment
+                </div>
+                <div className="text-[11px] text-[#A1A1AA]">
+                  Post topic notes as first pinned comment on Reels
+                </div>
+              </div>
+              <input
+                type="checkbox"
+                checked={doiAutoComment}
+                onChange={(e) => setDoiAutoComment(e.target.checked)}
+                className="accent-[#FF4F28] w-4 h-4 shrink-0 cursor-pointer"
+              />
             </div>
+
+            <button
+              type="button"
+              onClick={() => {
+                void navigator.clipboard?.writeText(captionDraft);
+                setCopiedCaption(true);
+                setTimeout(() => setCopiedCaption(false), 2000);
+              }}
+              className="w-full py-2 px-4 rounded-xl bg-[#18181D] hover:bg-[#27272A] border border-[#27272A] font-display font-bold text-xs text-white"
+            >
+              {copiedCaption ? "Caption Copied ✓" : "Copy Caption & Hashtags"}
+            </button>
+
+            {/* Dual Publishing Modes: Publish Now vs. Schedule to Calendar */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 border-t border-[#27272A]">
+              {/* Mode A: Publish Now */}
+              <div className="p-4 rounded-xl bg-[#09090B] border border-[#FF4F28]/40 flex flex-col justify-between gap-3 relative">
+                <span className="self-start px-2 py-0.5 rounded bg-[#FF4F28]/15 font-mono text-[9px] font-bold text-[#FFB4A4] uppercase">
+                  Mode A • Instant Dispatch
+                </span>
+                <div>
+                  <div className="font-display font-bold text-sm text-white">Publish Now</div>
+                  <p className="text-[11px] text-[#A1A1AA] mt-0.5">
+                    Direct Meta Graph API v21.0 Reels upload to{" "}
+                    {igAccount ? igAccount.handle : `@${userHandle}`}.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  disabled={!playableMp4Url || !igAccount || publishingMode !== null}
+                  onClick={() => void handlePublishReel("now")}
+                  className="w-full py-2.5 px-3 rounded-xl bg-[#FF4F28] hover:bg-[#FF6542] disabled:opacity-40 text-[#09090B] font-display font-bold text-xs inline-flex items-center justify-center gap-1.5"
+                >
+                  <span className="material-symbols-outlined text-[15px]">send</span>
+                  <span className="truncate">
+                    {publishingMode === "now"
+                      ? "Publishing Reel..."
+                      : !playableMp4Url
+                        ? "Render MP4 First"
+                        : !igAccount
+                          ? "Connect IG First"
+                          : `Post Reel to ${igAccount.handle}`}
+                  </span>
+                </button>
+              </div>
+
+              {/* Mode B: Schedule to Calendar */}
+              <div className="p-4 rounded-xl bg-[#09090B] border border-[#27272A] flex flex-col justify-between gap-3">
+                <span className="self-start px-2 py-0.5 rounded bg-[#18181D] font-mono text-[9px] font-bold text-[#A1A1AA] uppercase">
+                  Mode B • Automated Queue
+                </span>
+                <div className="space-y-1.5">
+                  <div className="font-display font-bold text-sm text-white">
+                    Schedule to Calendar
+                  </div>
+                  <input
+                    type="datetime-local"
+                    value={scheduleDateTime}
+                    onChange={(e) => setScheduleDateTime(e.target.value)}
+                    aria-label="Schedule publish date and time"
+                    className="w-full px-2.5 py-1.5 rounded-lg bg-[#121216] border border-[#27272A] font-mono text-[11px] text-white"
+                  />
+                </div>
+                <button
+                  type="button"
+                  disabled={!playableMp4Url || !igAccount || publishingMode !== null}
+                  onClick={() => void handlePublishReel("schedule")}
+                  className="w-full py-2.5 px-3 rounded-xl bg-[#18181D] hover:bg-[#27272A] border border-[#27272A] disabled:opacity-40 text-white font-display font-bold text-xs inline-flex items-center justify-center gap-1.5"
+                >
+                  <span className="material-symbols-outlined text-[15px]">schedule</span>
+                  <span>
+                    {publishingMode === "schedule"
+                      ? "Scheduling..."
+                      : "Schedule to Calendar"}
+                  </span>
+                </button>
+              </div>
+            </div>
+
+            {/* Published / Scheduled Confirmation Telemetry */}
+            {lastDispatchedReel && (
+              <div className="p-4 rounded-xl bg-[#10B981]/12 border border-[#10B981]/35 space-y-2">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="font-display font-bold text-xs text-[#9BFFCE]">
+                    {lastDispatchedReel.status === "published"
+                      ? `✓ Reel Published to ${lastDispatchedReel.igHandle}`
+                      : `✓ Reel Queued for ${new Date(
+                          lastDispatchedReel.scheduledFor
+                        ).toLocaleString()}`}
+                  </span>
+                  <span className="px-2 py-0.5 rounded bg-[#10B981]/20 font-mono text-[10px] text-[#9BFFCE]">
+                    {igAccount?.sandboxMode ? "SANDBOX MOCK" : "GRAPH v21.0"}
+                  </span>
+                </div>
+                {lastDispatchedReel.igContainerId && (
+                  <div className="font-mono text-[10px] text-[#E4E4E7] flex flex-wrap items-center gap-2">
+                    <span>Container: {lastDispatchedReel.igContainerId}</span>
+                    {lastDispatchedReel.igPermalink && (
+                      <>
+                        <span>•</span>
+                        <span className="text-[#9BFFCE] truncate">
+                          {lastDispatchedReel.igPermalink}
+                        </span>
+                      </>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
           </section>
         </div>
       </div>

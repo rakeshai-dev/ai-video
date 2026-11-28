@@ -28,7 +28,7 @@
 | **F-05** | **Step 1: AI Brainstorm & Create Video Wizard** | Real `/api/v1/ai/brainstorm` & `/api/v1/projects` creation flow: 5 AI concept cards, `30s/60s/90s`, `9:16`/`16:9`, 5 animation presets, Dual Voiceover toggle (`Edge Neural TTS` vs `ElevenLabs Pro`), and 2×2 voice audition. | `05A/B` | ✅ Completed |
 | **F-06** | **Steps 2 & 3: Interactive 60fps Storyboard & Animation Studio** | 3-column responsive studio (4-tab switcher on mobile/tablet), live 60fps HTML5 `<canvas>` programmatic renderer for all 5 engines, live scene script/node/subtitle editing, and multi-track timeline synced to DB. | `06A/B` | ✅ Completed |
 | **F-07** | **Step 4: On-Demand 1080p MP4 Render Pipeline & Failure Auto-Refund** | Real `/api/v1/projects/:id/render` endpoint invoking `packages/video-engine` + Edge Neural TTS + FFmpeg H.264, credit deduction, `0-Credits` non-destructive modal, and automatic credit refund on render failure. | `07A/B`, `14A/B` | ✅ Completed |
-| **F-08** | **Per-Member Instagram Connect OAuth 2.0 & Sandbox Publisher** | Isolated per-member Instagram OAuth vault (`AES-256-GCM` encrypted tokens), 3-step eligibility check, Personal Account / Expired Token error handling, Sandbox Mock Mode, and direct Reel publish + AI caption writer. | `07A/B`, `09A/B`, `14A/B` | ⏳ Pending |
+| **F-08** | **Per-Member Instagram Connect OAuth 2.0 & Sandbox Publisher** | Isolated per-member Instagram OAuth vault (`AES-256-GCM` encrypted tokens), 3-step eligibility check, Personal Account / Expired Token error handling, Sandbox Mock Mode, and direct Reel publish + AI caption writer. | `07A/B`, `09A/B`, `14A/B` | ✅ Completed |
 | **F-09** | **Content Calendar & Automated Scheduled Reels Queue** | Full-screen 2×3 Scheduled Reels Grid + Active Queue Inspector drawer, schedule/reschedule/cancel/retry dispatch API, and background scheduler cron worker. | `08A/B` | ⏳ Pending |
 | **F-10** | **Personal Brand Kit Studio** | Per-member brand colors, font stack, 4 word-synced subtitle presets, default voice & watermark safe-zone controls with live 9:16 preview stage persisted to DB. | `10A/B` | ⏳ Pending |
 | **F-11** | **Video Credits Billing, Plan Tiers & Immutable Audit Ledger** | Real `credit_ledger` table, credit balance telemetry, plan tier cards, instant top-up simulation/Stripe hook, and CSV audit log export. | `11A/B` | ⏳ Pending |
@@ -37,6 +37,19 @@
 ---
 
 ## 3. Feature Implementation Log (Proof of Work)
+
+### 2026-11-28 — Feature `F-08` Completed & Verified (Per-Member Instagram Connect OAuth 2.0 & Sandbox Publisher — `dev` branch)
+- **Files Created / Updated:**
+  - `apps/web/src/lib/instagram.ts` & `apps/web/src/lib/db.ts` (Real `AES-256-GCM` `96-bit IV` + `128-bit Auth Tag` token vault encryption/decryption; transparent legacy demo token upgrade; 3-step Meta Graph API v21.0 eligibility gates; `ERR_PERSONAL_TIER` guard; `TOKEN_DEGRADED` 60-day expiry detection & rotation; live handshake diagnostic probe; 4-tone AI Social Copywriter; and direct Reels container publish + calendar queue persistence)
+  - `apps/web/src/lib/auth.ts` (Updated `getCurrentUser()` to validate `token_expires_at > now` so expired OAuth tokens accurately reflect degraded connection status)
+  - `apps/web/src/app/api/v1/instagram/account/route.ts`, `connect/route.ts`, `refresh/route.ts`, `probe/route.ts`, `apps/web/src/app/api/v1/projects/[id]/generate-caption/route.ts`, and `apps/web/src/app/api/v1/publish/instagram/route.ts` (All 6 tenant-isolated Instagram Vault, Probe, AI Copywriter, and Direct Reels Publish / Schedule API routes)
+  - `apps/web/src/components/InstagramConnectClient.tsx` & `apps/web/src/app/dashboard/integrations/page.tsx` (Responsive Instagram Connect & Meta Graph API Security Center matching Stitch `09A/B` & `14A/B` Panel 04)
+  - `apps/web/src/components/RenderPublishClient.tsx` & `apps/web/src/app/dashboard/projects/[id]/publish/page.tsx` (Upgraded Step 4 Right Column matching Stitch `07A/B` with Target Creator Account card, 4-tone AI Social Copywriter, DOI Citation Auto-Comment toggle, Mode A `Publish Now` instant Reels dispatch, and Mode B `Schedule to Calendar`)
+- **Verification Proof:**
+  - `npm --prefix apps/web run typecheck` (`tsc --noEmit`): **0 errors**.
+  - Live `F-08` API & Encryption E2E Suite (`7/7` scenarios on `http://localhost:3010`): **Passed** (`401` auth guards across all 7 endpoints, `ERR_PERSONAL_TIER` `400` guard, real `aes256gcm:` ciphertext verified in SQLite, `RENDER_REQUIRED` unrendered draft guard, 4-tone AI caption generation, `401 TOKEN_DEGRADED` expiry & 60-day token rotation, direct Reels publish + schedule queue + cross-tenant `404` isolation, and OAuth revocation).
+  - Live Browser QA (`5/5` checks on `http://localhost:3010/dashboard/integrations`, `0` console errors): **Passed** (3/3 handshake gates, live diagnostic probe, `Simulate Expiry` → `TOKEN_DEGRADED` → 1-click re-authentication, and `ERR_PERSONAL_TIER` + 3-step Convert Account Guide).
+- **Next Active Task:** `F-09` — Content Calendar & Automated Scheduled Reels Queue (`08A/B`).
 
 ### 2026-11-28 — Feature `F-07` Completed & Verified (Step 4: On-Demand 1080p MP4 Render Pipeline & Failure Auto-Refund — `dev` branch)
 - **Files Created / Updated:**

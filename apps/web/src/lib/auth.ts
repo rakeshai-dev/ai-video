@@ -125,7 +125,7 @@ export async function getCurrentUser(): Promise<AuthenticatedUser | null> {
       `SELECT u.id, u.email, u.full_name, u.email_verified, u.plan_tier,
               u.credits_balance, u.workspace_slug, u.timezone, u.niche,
               s.expires_at,
-              sa.ig_handle, sa.status as ig_status
+              sa.ig_handle, sa.status as ig_status, sa.token_expires_at as ig_token_expires_at
        FROM sessions s
        JOIN users u ON u.id = s.user_id
        LEFT JOIN social_accounts sa ON sa.user_id = u.id AND sa.platform = 'instagram' AND sa.status = 'active'
@@ -146,6 +146,7 @@ export async function getCurrentUser(): Promise<AuthenticatedUser | null> {
         expires_at: string;
         ig_handle: string | null;
         ig_status: string | null;
+        ig_token_expires_at: string | null;
       }
     | undefined;
 
@@ -154,6 +155,10 @@ export async function getCurrentUser(): Promise<AuthenticatedUser | null> {
     db.prepare("DELETE FROM sessions WHERE token_hash = ?").run(tokenHash);
     return null;
   }
+
+  const igActiveAndValid =
+    row.ig_status === "active" &&
+    (!row.ig_token_expires_at || row.ig_token_expires_at > nowIso);
 
   return {
     id: row.id,
@@ -166,7 +171,7 @@ export async function getCurrentUser(): Promise<AuthenticatedUser | null> {
     timezone: row.timezone,
     niche: row.niche,
     instagramHandle: row.ig_handle || null,
-    instagramConnected: row.ig_status === "active",
+    instagramConnected: igActiveAndValid,
   };
 }
 

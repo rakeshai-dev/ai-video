@@ -210,6 +210,56 @@ export function getDb(): DatabaseSync {
     db.exec("ALTER TABLE video_projects ADD COLUMN voice_speed REAL NOT NULL DEFAULT 1.0");
   }
 
+  const socCols = db.prepare("PRAGMA table_info(social_accounts)").all() as Array<{ name: string }>;
+  const socColNames = new Set(socCols.map((c) => c.name));
+  if (!socColNames.has("display_name")) {
+    db.exec("ALTER TABLE social_accounts ADD COLUMN display_name TEXT NOT NULL DEFAULT ''");
+  }
+  if (!socColNames.has("ig_user_id")) {
+    db.exec("ALTER TABLE social_accounts ADD COLUMN ig_user_id TEXT NOT NULL DEFAULT ''");
+  }
+  if (!socColNames.has("fb_page_name")) {
+    db.exec("ALTER TABLE social_accounts ADD COLUMN fb_page_name TEXT NOT NULL DEFAULT ''");
+  }
+  if (!socColNames.has("fb_page_id")) {
+    db.exec("ALTER TABLE social_accounts ADD COLUMN fb_page_id TEXT NOT NULL DEFAULT ''");
+  }
+  if (!socColNames.has("followers_count")) {
+    db.exec("ALTER TABLE social_accounts ADD COLUMN followers_count INTEGER NOT NULL DEFAULT 14200");
+  }
+  if (!socColNames.has("scopes_json")) {
+    db.exec(
+      `ALTER TABLE social_accounts ADD COLUMN scopes_json TEXT NOT NULL DEFAULT '["instagram_basic","instagram_content_publish","pages_show_list","pages_read_engagement"]'`
+    );
+  }
+  if (!socColNames.has("updated_at")) {
+    db.exec("ALTER TABLE social_accounts ADD COLUMN updated_at TEXT NOT NULL DEFAULT ''");
+  }
+
+  const spCols = db.prepare("PRAGMA table_info(scheduled_posts)").all() as Array<{ name: string }>;
+  const spColNames = new Set(spCols.map((c) => c.name));
+  if (!spColNames.has("render_id")) {
+    db.exec("ALTER TABLE scheduled_posts ADD COLUMN render_id TEXT");
+  }
+  if (!spColNames.has("ig_media_id")) {
+    db.exec("ALTER TABLE scheduled_posts ADD COLUMN ig_media_id TEXT");
+  }
+  if (!spColNames.has("ig_permalink")) {
+    db.exec("ALTER TABLE scheduled_posts ADD COLUMN ig_permalink TEXT");
+  }
+  if (!spColNames.has("timezone")) {
+    db.exec("ALTER TABLE scheduled_posts ADD COLUMN timezone TEXT NOT NULL DEFAULT 'Asia/Kolkata'");
+  }
+  if (!spColNames.has("doi_auto_comment")) {
+    db.exec("ALTER TABLE scheduled_posts ADD COLUMN doi_auto_comment INTEGER NOT NULL DEFAULT 0");
+  }
+  if (!spColNames.has("published_at")) {
+    db.exec("ALTER TABLE scheduled_posts ADD COLUMN published_at TEXT");
+  }
+  if (!spColNames.has("updated_at")) {
+    db.exec("ALTER TABLE scheduled_posts ADD COLUMN updated_at TEXT NOT NULL DEFAULT ''");
+  }
+
   dbInstance = db;
   return dbInstance;
 }
