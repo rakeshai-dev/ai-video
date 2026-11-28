@@ -82,7 +82,8 @@ export async function POST(request: NextRequest) {
     if (
       code === "IG_NOT_CONNECTED" ||
       code === "RENDER_REQUIRED" ||
-      code === "INVALID_SCHEDULE_TIME"
+      code === "INVALID_SCHEDULE_TIME" ||
+      code === "LIVE_META_CONFIG_REQUIRED"
     ) {
       return NextResponse.json(
         {

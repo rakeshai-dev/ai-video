@@ -856,14 +856,114 @@ export async function publishOrScheduleInstagramReel(params: {
   }
 
   // mode === "now": Direct Reels Container Publish (Sandbox Mock or Live Meta Graph API v21.0)
-  const containerId = `ig_cnt_${crypto.randomInt(100000000000, 999999999999)}`;
-  const mediaId = `179${crypto.randomInt(1000000000000, 9999999999999)}`;
+  let containerId = `ig_cnt_${crypto.randomInt(100000000000, 999999999999)}`;
+  let mediaId = `179${crypto.randomInt(1000000000000, 9999999999999)}`;
   const reelShortcode = `DR${crypto
     .randomBytes(5)
     .toString("base64url")
     .replace(/[^A-Za-z0-9]/g, "")
     .slice(0, 8)}`;
-  const permalink = `https://www.instagram.com/reel/${reelShortcode}/`;
+  let permalink = `https://www.instagram.com/reel/${reelShortcode}/`;
+
+  if (!account.sandboxMode) {
+    // Live Meta Graph API v21.0 path: decrypt token from AES-256-GCM vault
+    const dbRow = db
+      .prepare(
+        "SELECT encrypted_token FROM social_accounts WHERE id = ? AND user_id = ?"
+      )
+      .get(account.id, params.userId) as { encrypted_token: string } | undefined;
+
+    const { plainToken } = decryptAccessToken(String(dbRow?.encrypted_token || ""));
+    const publicBaseUrl = (process.env.NEXT_PUBLIC_APP_URL || "").trim();
+    const isSyntheticToken = plainToken.startsWith("EAABsbCS1iHgBO_");
+    const hasHttpsPublicUrl = publicBaseUrl.startsWith("https://");
+
+    if (isSyntheticToken || !hasHttpsPublicUrl) {
+      const err = new Error(
+        !hasHttpsPublicUrl
+          ? "Live Meta Graph API v21.0 requires a public HTTPS NEXT_PUBLIC_APP_URL (Meta servers cannot pull MP4s from localhost). Keep Sandbox Mock Mode enabled on localhost, or configure an HTTPS tunnel + META_APP_ID."
+          : "Connected token was created in Sandbox Mode. Re-connect via Live Meta OAuth 2.0 or enable Sandbox Mock Mode."
+      );
+      (err as Error & { code?: string }).code = "LIVE_META_CONFIG_REQUIRED";
+      throw err;
+    }
+
+    const videoUrl = `${publicBaseUrl.replace(/\/$/, "")}/api/v1/projects/${
+      params.project.id
+    }/video${params.renderId ? `?renderId=${encodeURIComponent(params.renderId)}` : ""}`;
+
+    // Step 1: Create Reels media container on graph.facebook.com/v21.0
+    const createContainerRes = await fetch(
+      `https://graph.facebook.com/v21.0/${encodeURIComponent(account.igUserId)}/media`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          media_type: "REELS",
+          video_url: videoUrl,
+          caption: params.caption,
+          share_to_feed: true,
+          access_token: plainToken,
+        }),
+      }
+    );
+    const createContainerJson = await createContainerRes.json();
+    if (!createContainerRes.ok || !createContainerJson?.id) {
+      throw new Error(
+        createContainerJson?.error?.message ||
+          "Meta Graph API v21.0 rejected Reels media container creation."
+      );
+    }
+    containerId = String(createContainerJson.id);
+
+    // Step 2: Poll container transcoding status until FINISHED
+    for (let poll = 0; poll < 12; poll++) {
+      await new Promise((r) => setTimeout(r, 2500));
+      const statusRes = await fetch(
+        `https://graph.facebook.com/v21.0/${encodeURIComponent(
+          containerId
+        )}?fields=status_code&access_token=${encodeURIComponent(plainToken)}`
+      );
+      const statusJson = await statusRes.json();
+      if (statusJson?.status_code === "FINISHED") break;
+      if (statusJson?.status_code === "ERROR") {
+        throw new Error("Meta Graph API container transcoding failed (status_code=ERROR).");
+      }
+    }
+
+    // Step 3: Publish Reels container
+    const publishRes = await fetch(
+      `https://graph.facebook.com/v21.0/${encodeURIComponent(
+        account.igUserId
+      )}/media_publish`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          creation_id: containerId,
+          access_token: plainToken,
+        }),
+      }
+    );
+    const publishJson = await publishRes.json();
+    if (!publishRes.ok || !publishJson?.id) {
+      throw new Error(
+        publishJson?.error?.message || "Meta Graph API media_publish failed."
+      );
+    }
+    mediaId = String(publishJson.id);
+
+    // Fetch live permalink
+    const permRes = await fetch(
+      `https://graph.facebook.com/v21.0/${encodeURIComponent(
+        mediaId
+      )}?fields=permalink&access_token=${encodeURIComponent(plainToken)}`
+    );
+    const permJson = await permRes.json();
+    if (permJson?.permalink) {
+      permalink = String(permJson.permalink);
+    }
+  }
 
   db.exec("BEGIN IMMEDIATE");
   try {
