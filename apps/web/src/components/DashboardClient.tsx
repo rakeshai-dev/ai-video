@@ -411,6 +411,11 @@ export default function DashboardClient({ user, initialTelemetry }: DashboardCli
                             ● Scheduled
                           </span>
                         )}
+                        {project.status === "rendering" && (
+                          <span className="px-2 py-0.5 rounded bg-[#F59E0B]/20 border border-[#F59E0B]/40 text-[#FDE68A] font-mono text-[10px]">
+                            ● Encoding MP4...
+                          </span>
+                        )}
                         {project.status === "draft" && (
                           <span className="px-2 py-0.5 rounded bg-[#27272A] text-[#E4E4E7] font-mono text-[10px]">
                             ● Draft Storyboard

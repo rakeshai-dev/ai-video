@@ -27,7 +27,7 @@
 | **F-04** | **Personal Member Dashboard & Empty Onboarding State** | Protected `/dashboard` route with responsive sidebar/mobile drawer + bottom nav, 4 telemetry cards, 5 Quick-Start Engine Launchers, filterable Projects Grid, and First-Time `0 Projects` Empty Onboarding state. | `04A/B`, `14A/B` | ✅ Completed |
 | **F-05** | **Step 1: AI Brainstorm & Create Video Wizard** | Real `/api/v1/ai/brainstorm` & `/api/v1/projects` creation flow: 5 AI concept cards, `30s/60s/90s`, `9:16`/`16:9`, 5 animation presets, Dual Voiceover toggle (`Edge Neural TTS` vs `ElevenLabs Pro`), and 2×2 voice audition. | `05A/B` | ✅ Completed |
 | **F-06** | **Steps 2 & 3: Interactive 60fps Storyboard & Animation Studio** | 3-column responsive studio (4-tab switcher on mobile/tablet), live 60fps HTML5 `<canvas>` programmatic renderer for all 5 engines, live scene script/node/subtitle editing, and multi-track timeline synced to DB. | `06A/B` | ✅ Completed |
-| **F-07** | **Step 4: On-Demand 1080p MP4 Render Pipeline & Failure Auto-Refund** | Real `/api/v1/projects/:id/render` endpoint invoking `packages/video-engine` + Edge Neural TTS + FFmpeg H.264, credit deduction, `0-Credits` non-destructive modal, and automatic credit refund on render failure. | `07A/B`, `14A/B` | ⏳ Pending |
+| **F-07** | **Step 4: On-Demand 1080p MP4 Render Pipeline & Failure Auto-Refund** | Real `/api/v1/projects/:id/render` endpoint invoking `packages/video-engine` + Edge Neural TTS + FFmpeg H.264, credit deduction, `0-Credits` non-destructive modal, and automatic credit refund on render failure. | `07A/B`, `14A/B` | ✅ Completed |
 | **F-08** | **Per-Member Instagram Connect OAuth 2.0 & Sandbox Publisher** | Isolated per-member Instagram OAuth vault (`AES-256-GCM` encrypted tokens), 3-step eligibility check, Personal Account / Expired Token error handling, Sandbox Mock Mode, and direct Reel publish + AI caption writer. | `07A/B`, `09A/B`, `14A/B` | ⏳ Pending |
 | **F-09** | **Content Calendar & Automated Scheduled Reels Queue** | Full-screen 2×3 Scheduled Reels Grid + Active Queue Inspector drawer, schedule/reschedule/cancel/retry dispatch API, and background scheduler cron worker. | `08A/B` | ⏳ Pending |
 | **F-10** | **Personal Brand Kit Studio** | Per-member brand colors, font stack, 4 word-synced subtitle presets, default voice & watermark safe-zone controls with live 9:16 preview stage persisted to DB. | `10A/B` | ⏳ Pending |
@@ -37,6 +37,17 @@
 ---
 
 ## 3. Feature Implementation Log (Proof of Work)
+
+### 2026-11-28 — Feature `F-07` Completed & Verified (Step 4: On-Demand 1080p MP4 Render Pipeline & Failure Auto-Refund — `dev` branch)
+- **Files Created / Updated:**
+  - `apps/web/src/lib/db.ts` & `apps/web/src/lib/render-engine.ts` (Added `renders` SQLite table; duration-tiered credit calculator `30s=1 / 60s=2 / 90s=3 CR`; atomic `BEGIN IMMEDIATE` credit deduction into `credit_ledger`; background headless Remotion + `msedge-tts` + FFmpeg H.264 MP4 worker; and idempotent `autoRefundFailedRender` restoring `+N CR` with `tx_ref_*_refunded` ledger proof on worker failure)
+  - `packages/video-engine/scripts/synthesize-scenes.mjs`, `packages/video-engine/src/Root.tsx`, and `packages/video-engine/src/types/schema.ts` (Per-scene Edge Neural TTS MP3 synthesis with rate control, offline neural audio fallback, clean WebSocket teardown, and dynamic `30fps` / `60fps` metadata support)
+  - `apps/web/src/app/api/v1/projects/[id]/render/route.ts`, `events/route.ts`, `video/route.ts`, `backup/route.ts`, and `apps/web/src/app/api/v1/credits/topup/route.ts` (Render job `POST`/`GET`, `402 INSUFFICIENT_CREDITS` guard, real-time `text/event-stream` SSE progress stream, authenticated HTTP `206` byte-range MP4 streaming & download, JSON script backup export, and 1-click credit top-up recovery)
+  - `apps/web/src/components/RenderPublishClient.tsx`, `apps/web/src/app/dashboard/projects/[id]/publish/page.tsx`, and `apps/web/src/components/DashboardClient.tsx` (Full responsive Step 4 Render & Export screen matching Stitch `07A/B` + `14A/B` Zero-Credits Modal & Automatic Failure Refund diagnostic trace card)
+- **Verification Proof:**
+  - `npm --prefix apps/web run typecheck` (`tsc --noEmit`): **0 errors**.
+  - Live `F-07` E2E Render & Auto-Refund Suite (`7/7` scenarios on `http://localhost:3010`): **Passed** (`401` auth guards across all 6 endpoints, cross-tenant `404` isolation, `0-Credits` `402` gate + `+25 CR` Top-Up recovery with zero data loss, simulated crash auto-refund `tx_ref_*_refunded` restoring wallet balance + JSON backup export, real `1080×1920` H.264 MP4 encode `1.7 MB` + SSE `event: progress` stream, and HTTP `206` byte-range MP4 playback with valid ISO BMFF `ftyp` header).
+- **Next Active Task:** `F-08` — Per-Member Instagram Connect OAuth 2.0 & Sandbox Publisher (`07A/B`, `09A/B`, `14A/B`).
 
 ### 2026-11-26 — Feature `F-06` Completed & Verified (Steps 2 & 3: Interactive 60fps Storyboard & Animation Studio — `dev` branch)
 - **Files Created / Updated:**

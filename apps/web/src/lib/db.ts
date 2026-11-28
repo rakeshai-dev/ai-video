@@ -154,6 +154,29 @@ export function getDb(): DatabaseSync {
       FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
     );
 
+    CREATE TABLE IF NOT EXISTS renders (
+      id TEXT PRIMARY KEY,
+      project_id TEXT NOT NULL,
+      user_id TEXT NOT NULL,
+      aspect_ratio TEXT NOT NULL DEFAULT '9:16',
+      fps INTEGER NOT NULL DEFAULT 30,
+      status TEXT NOT NULL DEFAULT 'queued',
+      progress_pct INTEGER NOT NULL DEFAULT 0,
+      current_step TEXT NOT NULL DEFAULT '',
+      output_mp4_path TEXT,
+      file_size_bytes INTEGER NOT NULL DEFAULT 0,
+      duration_ms INTEGER NOT NULL DEFAULT 0,
+      total_frames INTEGER NOT NULL DEFAULT 0,
+      credits_charged INTEGER NOT NULL DEFAULT 1,
+      refund_tx_id TEXT,
+      error_message TEXT,
+      worker_trace TEXT NOT NULL DEFAULT '[]',
+      created_at TEXT NOT NULL,
+      completed_at TEXT,
+      FOREIGN KEY (project_id) REFERENCES video_projects(id) ON DELETE CASCADE,
+      FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+    );
+
     CREATE TABLE IF NOT EXISTS scheduled_posts (
       id TEXT PRIMARY KEY,
       user_id TEXT NOT NULL,

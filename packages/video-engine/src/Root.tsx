@@ -22,17 +22,18 @@ export const RemotionRoot: React.FC = () => {
           const proj: AnimoraProjectPayload =
             props.project || DEFAULT_PROTOTYPE_PROJECT;
           const isVertical = proj.aspect_ratio !== "16:9";
+          const targetFps = proj.fps === 60 ? 60 : 30;
           const totalMs = (proj.scenes || []).reduce(
             (sum, s) => sum + (s.duration_ms || 5000),
             0
           );
           const durationInFrames = Math.max(
-            60,
-            Math.ceil((totalMs / 1000) * 30)
+            targetFps * 2,
+            Math.ceil((totalMs / 1000) * targetFps)
           );
           return {
             durationInFrames,
-            fps: 30,
+            fps: targetFps,
             width: isVertical ? 1080 : 1920,
             height: isVertical ? 1920 : 1080,
           };

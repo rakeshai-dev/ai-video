@@ -122,6 +122,7 @@ export interface AnimoraProjectPayload {
   title: string;
   category_preset: string;
   aspect_ratio: "9:16" | "16:9";
+  fps?: number;
   brand_kit: BrandKitConfig;
   caption_config: CaptionConfig;
   scenes: SceneData[];
