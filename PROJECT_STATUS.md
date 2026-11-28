@@ -31,12 +31,23 @@
 | **F-08** | **Per-Member Instagram Connect OAuth 2.0 & Sandbox Publisher** | Isolated per-member Instagram OAuth vault (`AES-256-GCM` encrypted tokens), 3-step eligibility check, Personal Account / Expired Token error handling, Sandbox Mock Mode, and direct Reel publish + AI caption writer. | `07A/B`, `09A/B`, `14A/B` | ✅ Completed |
 | **F-09** | **Content Calendar & Automated Scheduled Reels Queue** | Full-screen 2×3 Scheduled Reels Grid + Active Queue Inspector drawer, schedule/reschedule/cancel/retry dispatch API, and background scheduler cron worker. | `08A/B` | ✅ Completed |
 | **F-10** | **Personal Brand Kit Studio** | Per-member brand colors, font stack, 4 word-synced subtitle presets, default voice & watermark safe-zone controls with live 9:16 preview stage persisted to DB. | `10A/B` | ✅ Completed |
-| **F-11** | **Video Credits Billing, Plan Tiers & Immutable Audit Ledger** | Real `credit_ledger` table, credit balance telemetry, plan tier cards, instant top-up simulation/Stripe hook, and CSV audit log export. | `11A/B` | ⏳ Pending |
+| **F-11** | **Video Credits Billing, Plan Tiers & Immutable Audit Ledger** | Real `credit_ledger` table, credit balance telemetry, plan tier cards, instant top-up simulation/Stripe hook, and CSV audit log export. | `11A/B` | ✅ Completed |
 | **F-12** | **Account Profile, Security Vault, Webhooks & API Keys** | Profile/timezone settings, TOTP 2FA & active device session revocation, Discord/Slack/email render webhooks, headless API key generation, and isolated workspace deletion. | `12A/B` | ⏳ Pending |
 
 ---
 
 ## 3. Feature Implementation Log (Proof of Work)
+
+### 2026-11-28 — Feature `F-11` Completed & Verified (Video Credits Billing, Plan Tiers & Immutable Audit Ledger — `dev` branch)
+- **Files Created / Updated:**
+  - `apps/web/src/lib/billing.ts` (Tenant-isolated `getMemberBillingOverview` aggregating `users`, `credit_ledger`, `renders`, and `video_projects`; `PLAN_TIERS` `starter_free` / `creator_pro` $29 / `educator_studio` $79; `TOPUP_PACKS` `25_cr` $9 / `60_cr` $19 / `150_cr` $39; atomic `BEGIN IMMEDIATE` `topUpMemberCredits` & `changeMemberPlanTier` with `credit_ledger` audit entries; and RFC-4180 escaped `exportMemberLedgerCsv`)
+  - `apps/web/src/app/api/v1/credits/topup/route.ts`, `plan/route.ts`, and `ledger/route.ts` (Authenticated `POST` credit top-up packs backward-compatible with `F-07` Zero-Credits modal, `POST` subscription tier switch/upgrade, and `GET` filterable ledger JSON + `format=csv` attachment export)
+  - `apps/web/src/components/BillingCreditsClient.tsx` & `apps/web/src/app/dashboard/billing/page.tsx` (Responsive Billing & Immutable Audit Ledger matching Stitch `11A` Desktop & `11B` Mobile: Credit Balance Hero Gauge, 4-card Burn Rate Capacity Estimator, Lifetime USD/Minted/Render-Time telemetry, Pricing Docs SLA drawer, 3 Studio Production Tier cards, 3 Instant Top-Up Packs, live search + category filter chips + 1-click CSV export, and stacked mobile audit cards)
+- **Verification Proof:**
+  - `npm --prefix apps/web run typecheck` (`tsc --noEmit`): **0 errors**.
+  - Live `F-11` Billing & Immutable Ledger E2E Suite (`8/8` scenarios on `http://localhost:3010`): **Passed** (`401` auth guards + SSR redirect, onboarding `starter_free` `15 CR` telemetry, `400` Zod validation guards, `25_cr` & `150_cr` top-ups + USD spend tracking, `creator_pro` `+100 CR` upgrade & `starter_free` balance-preserving downgrade, category & `tx_` hash filtering, RFC-4180 CSV escaping, and cross-tenant isolation).
+  - Live Browser QA (`6/6` checks on `http://localhost:3010/dashboard/billing`, `0` console errors): **Passed** (Hero & Pricing Docs SLA drawer, `Creator Pro` upgrade + real-time header/sidebar credit sync, `Buy $9` `+25 CR` top-up, ledger category tabs + `tx_topup_` search + `Export CSV` download, and `390×844` mobile stacked audit cards with zero horizontal overflow).
+- **Next Active Task:** `F-12` — Account Profile, Security Vault, Webhooks & API Keys (`12A/B`).
 
 ### 2026-11-28 — Feature `F-10` Completed & Verified (Personal Brand Kit Studio — `dev` branch)
 - **Files Created / Updated:**
